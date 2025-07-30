@@ -26,40 +26,42 @@
     <!-- Hero搜索区域 -->
     <div class="search-section">
       <div class="search-container">
-        <div class="search-title">🔍 智能文件搜索</div>
-        <div class="search-input-wrapper">
-          <input
-            v-model="searchQuery"
-            @keydown.enter="performSearch"
-            @keydown.down.prevent="navigateHistory(1)"
-            @keydown.up.prevent="navigateHistory(-1)"
-            @focus="showHistory = true"
-            @blur="hideHistoryDelayed"
-            class="search-input"
-            placeholder="输入自然语言查询，AI将转换为Everything语法..."
-            :disabled="isSearching"
-            ref="searchInput"
-          />
-          <button
-            @click="performSearch"
-            :disabled="isSearching || !searchQuery.trim()"
-            class="search-button"
-            :class="{ 'searching': isSearching }"
-          >
-            {{ isSearching ? '搜索中...' : '搜索' }}
-          </button>
-
-          <!-- 搜索历史下拉 -->
-          <div v-if="showHistory && filteredHistory.length > 0" class="search-history">
-            <div
-              v-for="(item, index) in filteredHistory"
-              :key="item.id"
-              @click="selectHistoryItem(item)"
-              :class="['search-history-item', { active: historySelectedIndex === index }]"
+        <div class="search-row">
+          <div class="search-title">🔍 智能文件搜索</div>
+          <div class="search-input-wrapper">
+            <input
+              v-model="searchQuery"
+              @keydown.enter="performSearch"
+              @keydown.down.prevent="navigateHistory(1)"
+              @keydown.up.prevent="navigateHistory(-1)"
+              @focus="showHistory = true"
+              @blur="hideHistoryDelayed"
+              class="search-input"
+              placeholder="输入自然语言查询，AI将转换为Everything语法..."
+              :disabled="isSearching"
+              ref="searchInput"
+            />
+            <button
+              @click="performSearch"
+              :disabled="isSearching || !searchQuery.trim()"
+              class="search-button"
+              :class="{ 'searching': isSearching }"
             >
-              <div class="search-history-query">{{ item.query }}</div>
-              <div v-if="item.everything_query !== item.query" class="search-history-everything">
-                {{ item.everything_query }}
+              {{ isSearching ? '搜索中...' : '搜索' }}
+            </button>
+
+            <!-- 搜索历史下拉 -->
+            <div v-if="showHistory && filteredHistory.length > 0" class="search-history">
+              <div
+                v-for="(item, index) in filteredHistory"
+                :key="item.id"
+                @click="selectHistoryItem(item)"
+                :class="['search-history-item', { active: historySelectedIndex === index }]"
+              >
+                <div class="search-history-query">{{ item.query }}</div>
+                <div v-if="item.everything_query !== item.query" class="search-history-everything">
+                  {{ item.everything_query }}
+                </div>
               </div>
             </div>
           </div>

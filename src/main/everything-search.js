@@ -178,6 +178,11 @@ class EverythingSearch {
         fileExt = '';
       }
 
+      // 确保文件名包含扩展名
+      if (fileExt && fileName && !fileName.includes('.')) {
+        fileName = fileName + fileExt;
+      }
+
       // 获取文件信息
       let fileSize = '';
       let modifiedDate = '';
