@@ -1,2 +1,4 @@
 ﻿node_modules
 .idea
+dist-vue
+release

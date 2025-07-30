@@ -10,6 +10,9 @@
     "dev:electron": "wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development electron .",
     "build": "vite build",
     "build:electron": "electron-builder",
+    "build:all": "npm run build && npm run build:electron",
+    "dist": "npm run build:all",
+    "pack": "electron-builder --dir",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -44,16 +47,45 @@
     "appId": "com.everything.ai.chat",
     "productName": "Everything AI Chat",
     "directories": {
-      "output": "dist"
+      "output": "release",
+      "buildResources": "assets"
     },
     "files": [
-      "src/**/*",
+      "src/main/**/*",
       "dist-vue/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-vue",
+        "to": "dist-vue"
+      }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Everything AI Chat"
     }
   }
 }
