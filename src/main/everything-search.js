@@ -47,24 +47,26 @@ class EverythingSearch {
       json: 1,
       count: options.count || 1000,
       offset: options.offset || 0,
-      sort: options.sort || 'name'
+      sort: options.sort || 'name',
+      // 获取所有可能的列信息
+      path_column: 1,                    // 完整路径
+      size_column: 1,                    // 文件大小
+      date_modified_column: 1,           // 修改日期
+      date_created_column: 1,            // 创建日期
+      date_accessed_column: 1,           // 访问日期
+      attributes_column: 1,              // 文件属性
+      file_list_filename_column: 1,      // 文件列表文件名
+      run_count_column: 1,               // 运行次数
+      date_recently_changed_column: 1,   // 最近更改日期
+      highlighted_filename_column: 1,    // 高亮文件名
+      highlighted_path_column: 1,        // 高亮路径
+      highlighted_full_path_and_filename_column: 1  // 高亮完整路径和文件名
     };
-
-    if (options.path) {
-      searchParams.path = 1;
-    }
-    if (options.size) {
-      searchParams.size = 1;
-    }
-    if (options.date_modified) {
-      searchParams.date_modified = 1;
-    }
-    if (options.date_created) {
-      searchParams.date_created = 1;
-    }
 
     const queryStr = querystring.stringify(searchParams);
     const url = `${this.baseUrl}/?${queryStr}`;
+
+    console.log('🌐 [Everything API] 请求URL:', url);
 
     return new Promise((resolve, reject) => {
       const req = http.request(url, (res) => {
@@ -81,8 +83,9 @@ class EverythingSearch {
             }
 
             const result = JSON.parse(data);
+
             const formattedResults = this.formatResults(result.results || []);
-            
+
             resolve({
               success: true,
               results: formattedResults,
@@ -111,36 +114,118 @@ class EverythingSearch {
    * 格式化搜索结果
    */
   formatResults(results) {
-    return results.map(item => {
-      const filePath = item.path || '';
-      const fileName = path.basename(filePath);
-      const fileDir = path.dirname(filePath);
-      const fileExt = path.extname(filePath);
+
+    return results.map((item, index) => {
+
+      let filePath, fileName, fileDir, fileExt;
+
+      if (item.path) {
+        // 如果有完整路径，使用完整路径
+        filePath = item.path;
+        fileName = path.basename(filePath);
+        fileDir = path.dirname(filePath);
+        fileExt = path.extname(fileName);
+      } else if (item.name) {
+        // 如果只有文件名，使用文件名
+        fileName = item.name;
+        filePath = item.name; // 暂时使用文件名作为路径
+        fileDir = ''; // 目录未知
+        fileExt = path.extname(fileName);
+      } else {
+        // 都没有的话使用空值
+        fileName = '';
+        filePath = '';
+        fileDir = '';
+        fileExt = '';
+      }
 
       // 获取文件信息
       let fileSize = '';
       let modifiedDate = '';
 
       try {
-        if (fs.existsSync(filePath)) {
+        if (filePath && fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath);
           fileSize = stats.size.toString();
           modifiedDate = stats.mtime.toISOString();
         }
       } catch (error) {
         // 忽略文件状态获取错误
+        console.log(`⚠️ [formatResults] 获取文件状态失败:`, error.message);
       }
 
-      return {
+      // 处理文件大小
+      let finalSize = '';
+      if (item.size !== undefined && item.size !== null) {
+        finalSize = item.size.toString();
+      } else {
+        finalSize = fileSize;
+      }
+
+      // Windows FILETIME转换函数
+      const convertFileTime = (filetime) => {
+        if (!filetime) return '';
+
+        // FILETIME是从1601年1月1日开始的100纳秒间隔数
+        // 转换为JavaScript Date对象
+        try {
+          const timestamp = parseInt(filetime);
+          if (isNaN(timestamp)) return filetime;
+
+          // FILETIME转换：从1601年1月1日开始，单位是100纳秒
+          // JavaScript Date从1970年1月1日开始，单位是毫秒
+          const epochDiff = 11644473600000; // 1601到1970的毫秒差
+          const jsTimestamp = (timestamp / 10000) - epochDiff;
+
+          return new Date(jsTimestamp).toISOString();
+        } catch (error) {
+          console.log('时间转换失败:', error);
+          return filetime;
+        }
+      };
+
+      // 处理所有时间字段
+      const finalModified = convertFileTime(item.date_modified) || modifiedDate;
+      const finalCreated = convertFileTime(item.date_created);
+      const finalAccessed = convertFileTime(item.date_accessed);
+      const finalRecentlyChanged = convertFileTime(item.date_recently_changed);
+
+      const formatted = {
+        // 基本信息
         name: fileName,
         path: filePath,
         directory: fileDir,
         extension: fileExt.replace('.', '').toUpperCase(),
-        size: item.size || fileSize,
-        modified: item.date_modified || modifiedDate,
-        created: item.date_created || '',
-        type: this.getFileType(fileExt)
+        type: this.getFileType(fileExt),
+
+        // 文件大小
+        size: finalSize,
+
+        // 时间信息
+        modified: finalModified,
+        created: finalCreated,
+        accessed: finalAccessed,
+        recently_changed: finalRecentlyChanged,
+
+        // 文件属性
+        attributes: item.attributes || '',
+
+        // 运行信息
+        run_count: item.run_count || 0,
+
+        // 高亮信息（用于搜索结果显示）
+        highlighted_filename: item.highlighted_filename || fileName,
+        highlighted_path: item.highlighted_path || filePath,
+        highlighted_full_path: item.highlighted_full_path_and_filename || filePath,
+
+        // 其他信息
+        file_list_filename: item.file_list_filename || '',
+
+        // 原始数据（调试用）
+        raw_data: item
       };
+
+      return formatted;
     });
   }
 
@@ -149,7 +234,7 @@ class EverythingSearch {
    */
   getFileType(extension) {
     const ext = extension.toLowerCase();
-    
+
     const typeMap = {
       // 文档
       '.pdf': 'PDF',
@@ -265,4 +350,4 @@ class EverythingSearch {
   }
 }
 
-module.exports = EverythingSearch; 
+module.exports = EverythingSearch;

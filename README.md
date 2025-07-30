@@ -63,6 +63,10 @@ npm install
 ### 开发模式
 
 ```bash
+# 安装依赖
+npm install
+
+# 启动开发环境
 npm run dev
 ```
 
@@ -115,6 +119,18 @@ npm run build:electron
 | 本周的文档 | `*.doc;*.docx dm:thisweek` | 本周修改的文档 |
 
 ## 故障排除
+
+### 应用启动失败
+
+**解决步骤**:
+1. 确保端口5173未被占用
+2. 如有需要，运行 `taskkill /f /im node.exe` 终止旧进程
+3. 重新运行 `npm run dev`
+
+如仍有问题:
+1. 删除 `node_modules` 文件夹  
+2. 运行 `npm install` 重新安装
+3. 使用 `npm run dev` 启动
 
 ### Everything连接失败
 

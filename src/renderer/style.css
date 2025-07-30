@@ -438,4 +438,40 @@ body {
   .file-cell {
     padding: 0 8px;
   }
+}
+
+/* 新增字段的列样式 */
+.col-created {
+  min-width: 140px;
+  width: 140px;
+}
+
+.col-accessed {
+  min-width: 140px;
+  width: 140px;
+}
+
+.col-attributes {
+  min-width: 100px;
+  width: 100px;
+}
+
+.col-run-count {
+  min-width: 80px;
+  width: 80px;
+  text-align: center;
+}
+
+/* 文件属性显示样式 */
+.file-attributes {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-run-count {
+  text-align: center;
+  color: var(--text-secondary);
 } 

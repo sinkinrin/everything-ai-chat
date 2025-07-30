@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const Database = require('better-sqlite3');
 const Store = require('electron-store');
 const OpenAI = require('openai');
 const EverythingSearch = require('./everything-search');
@@ -8,8 +7,13 @@ const EverythingSearch = require('./everything-search');
 // 初始化配置存储
 const store = new Store();
 
-// 创建数据库连接
-let db;
+// 初始化搜索历史存储
+const searchHistoryStore = new Store({
+  name: 'search-history',
+  defaults: {
+    searches: []
+  }
+});
 
 // OpenAI实例
 let openai;
@@ -34,9 +38,20 @@ function createWindow() {
   });
 
   // 开发环境加载Vue开发服务器，生产环境加载构建文件
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+  if (isDev) {
+    // 等待Vue开发服务器启动
+    const loadDevServer = async () => {
+      try {
+        await mainWindow.loadURL('http://127.0.0.1:5173');
+        mainWindow.webContents.openDevTools();
+      } catch (error) {
+        console.log('等待Vue开发服务器启动...');
+        setTimeout(loadDevServer, 1000);
+      }
+    };
+    loadDevServer();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist-vue/index.html'));
   }
@@ -47,31 +62,7 @@ function createWindow() {
   });
 }
 
-// 初始化数据库
-function initDatabase() {
-  const dbPath = path.join(__dirname, '../database/search_history.db');
-  db = new Database(dbPath);
-  
-  // 创建搜索历史表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS search_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      query TEXT NOT NULL,
-      everything_query TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  // 创建搜索结果缓存表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS search_cache (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      query_hash TEXT UNIQUE,
-      results TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
+// 初始化搜索历史存储（使用electron-store，无需单独初始化）
 
 // 初始化OpenAI
 function initOpenAI() {
@@ -89,7 +80,7 @@ ipcMain.handle('search-files', async (event, query) => {
   try {
     // 先尝试将自然语言转换为Everything查询语法
     let everythingQuery = query;
-    
+
     if (openai && query.length > 3) {
       try {
         const aiResponse = await openai.chat.completions.create({
@@ -116,7 +107,7 @@ Everything搜索语法规则：
           max_tokens: 100,
           temperature: 0.1
         });
-        
+
         everythingQuery = aiResponse.choices[0].message.content.trim();
       } catch (error) {
         console.error('OpenAI转换失败:', error);
@@ -127,22 +118,19 @@ Everything搜索语法规则：
       // 如果没有OpenAI配置，使用本地优化规则
       everythingQuery = everythingSearch.optimizeQuery(query);
     }
-    
-    // 执行Everything搜索
+
+    // 执行Everything搜索 - 新的API已经默认包含所有必要信息
     const searchResult = await everythingSearch.search(everythingQuery, {
-      path: true,
-      size: true,
-      date_modified: true,
       count: 1000
     });
-    
+
     if (!searchResult.success) {
       throw new Error(searchResult.error || 'Everything搜索失败');
     }
-    
+
     // 保存搜索历史
     saveSearchHistory(query, everythingQuery);
-    
+
     return {
       success: true,
       query: query,
@@ -150,7 +138,7 @@ Everything搜索语法规则：
       results: searchResult.results,
       totalResults: searchResult.totalResults
     };
-    
+
   } catch (error) {
     console.error('搜索失败:', error);
     return {
@@ -168,8 +156,28 @@ function initEverythingSearch() {
 // 保存搜索历史
 function saveSearchHistory(query, everythingQuery) {
   try {
-    const stmt = db.prepare('INSERT INTO search_history (query, everything_query) VALUES (?, ?)');
-    stmt.run(query, everythingQuery);
+    const searches = searchHistoryStore.get('searches', []);
+    const newSearch = {
+      id: Date.now(),
+      query: query,
+      everything_query: everythingQuery,
+      created_at: new Date().toISOString()
+    };
+
+    // 避免重复，如果查询相同则更新时间
+    const existingIndex = searches.findIndex(s => s.query === query);
+    if (existingIndex !== -1) {
+      searches[existingIndex] = newSearch;
+    } else {
+      searches.unshift(newSearch);
+    }
+
+    // 只保留最近50条记录
+    if (searches.length > 50) {
+      searches.splice(50);
+    }
+
+    searchHistoryStore.set('searches', searches);
   } catch (error) {
     console.error('保存搜索历史失败:', error);
   }
@@ -178,8 +186,8 @@ function saveSearchHistory(query, everythingQuery) {
 // 获取搜索历史
 ipcMain.handle('get-search-history', async () => {
   try {
-    const stmt = db.prepare('SELECT * FROM search_history ORDER BY created_at DESC LIMIT 20');
-    return stmt.all();
+    const searches = searchHistoryStore.get('searches', []);
+    return searches.slice(0, 20); // 返回最近20条记录
   } catch (error) {
     console.error('获取搜索历史失败:', error);
     return [];
@@ -227,7 +235,6 @@ ipcMain.handle('show-in-folder', async (event, filePath) => {
 });
 
 app.whenReady().then(() => {
-  initDatabase();
   initOpenAI();
   initEverythingSearch();
   createWindow();
@@ -241,16 +248,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    if (db) {
-      db.close();
-    }
     app.quit();
   }
 });
 
-// 确保数据库目录存在
-const fs = require('fs');
-const dbDir = path.join(__dirname, '../database');
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-} 
+// 搜索历史使用electron-store自动管理，无需手动创建目录

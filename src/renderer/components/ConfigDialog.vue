@@ -8,6 +8,52 @@
 
       <div class="config-content">
         <div class="config-section">
+          <h3>显示字段配置</h3>
+          <p class="config-description">
+            选择在搜索结果中显示的字段信息
+          </p>
+
+          <div class="field-config-grid">
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.accessed" />
+                <span>访问时间</span>
+              </label>
+            </div>
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.attributes" />
+                <span>文件属性</span>
+              </label>
+            </div>
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.created" />
+                <span>创建时间</span>
+              </label>
+            </div>
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.recently_changed" />
+                <span>最近更改</span>
+              </label>
+            </div>
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.run_count" />
+                <span>运行次数</span>
+              </label>
+            </div>
+            <div class="field-config-item">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="config.displayFields.file_list_filename" />
+                <span>文件列表名</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
           <h3>OpenAI 配置</h3>
           <p class="config-description">
             配置OpenAI API以启用自然语言转Everything搜索语法功能
@@ -43,13 +89,30 @@
 
           <div class="form-group">
             <label for="model">模型</label>
-            <select id="model" v-model="config.model" class="form-select">
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo (推荐)</option>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
-            </select>
+            <div class="model-input-container">
+              <input
+                id="model"
+                v-model="config.model"
+                type="text"
+                class="form-input model-input"
+                placeholder="输入或选择模型"
+                @focus="showModelHistory = true"
+                @blur="hideModelHistoryDelayed"
+                @input="filterModelHistory"
+              />
+              <div v-if="showModelHistory && filteredModelHistory.length > 0" class="model-dropdown">
+                <div
+                  v-for="model in filteredModelHistory"
+                  :key="model"
+                  @click="selectModel(model)"
+                  class="model-dropdown-item"
+                >
+                  {{ model }}
+                </div>
+              </div>
+            </div>
             <small class="form-help">
-              选择用于自然语言处理的模型
+              输入自定义模型名称或从历史记录中选择
             </small>
           </div>
         </div>
@@ -63,7 +126,13 @@
           <div class="status-item">
             <div class="status-indicator" :class="{ active: everythingStatus }"></div>
             <span>Everything 状态: {{ everythingStatus ? '已连接' : '未连接' }}</span>
-            <button @click="testEverything" class="test-button">测试连接</button>
+            <button @click="testEverything" :disabled="isTesting" class="test-button">
+              {{ isTesting ? '测试中...' : '测试连接' }}
+            </button>
+          </div>
+
+          <div v-if="testMessage" class="test-message" :class="{ success: testSuccess, error: !testSuccess }">
+            {{ testMessage }}
           </div>
 
           <div class="info-box">
@@ -98,11 +167,36 @@ export default {
     const config = reactive({
       apiKey: '',
       baseURL: 'https://api.openai.com/v1',
-      model: 'gpt-3.5-turbo'
+      model: 'gpt-3.5-turbo',
+      displayFields: {
+        accessed: false,
+        attributes: false,
+        created: false,
+        recently_changed: false,
+        run_count: false,
+        file_list_filename: false
+      }
     });
 
     const isSaving = ref(false);
     const everythingStatus = ref(false);
+    const isTesting = ref(false);
+    const testMessage = ref('');
+    const testSuccess = ref(false);
+    
+    // 模型历史记录相关
+    const showModelHistory = ref(false);
+    const modelHistory = ref([
+      'gpt-3.5-turbo',
+      'gpt-4',
+      'gpt-4-turbo-preview',
+      'gpt-4o',
+      'gpt-4o-mini',
+      'claude-3-opus',
+      'claude-3-sonnet',
+      'claude-3-haiku'
+    ]);
+    const filteredModelHistory = ref([]);
 
     const loadConfig = async () => {
       try {
@@ -133,20 +227,56 @@ export default {
     };
 
     const testEverything = async () => {
+      isTesting.value = true;
+      testMessage.value = '';
+      
       try {
         // 简单测试Everything连接
         const result = await window.electronAPI.searchFiles('test');
         everythingStatus.value = result.success;
         
         if (result.success) {
-          alert('Everything连接成功！');
+          testMessage.value = 'Everything连接成功！';
+          testSuccess.value = true;
         } else {
-          alert('Everything连接失败: ' + result.error);
+          testMessage.value = 'Everything连接失败: ' + result.error;
+          testSuccess.value = false;
         }
       } catch (error) {
         everythingStatus.value = false;
-        alert('Everything连接失败: ' + error.message);
+        testMessage.value = 'Everything连接失败: ' + error.message;
+        testSuccess.value = false;
+      } finally {
+        isTesting.value = false;
       }
+    };
+
+    // 模型历史记录相关方法
+    const filterModelHistory = () => {
+      const query = config.model.toLowerCase();
+      filteredModelHistory.value = modelHistory.value.filter(model => 
+        model.toLowerCase().includes(query)
+      );
+    };
+
+    const selectModel = (model) => {
+      config.model = model;
+      showModelHistory.value = false;
+      
+      // 添加到历史记录（如果不存在）
+      if (!modelHistory.value.includes(model)) {
+        modelHistory.value.unshift(model);
+        // 保持历史记录在合理数量
+        if (modelHistory.value.length > 20) {
+          modelHistory.value = modelHistory.value.slice(0, 20);
+        }
+      }
+    };
+
+    const hideModelHistoryDelayed = () => {
+      setTimeout(() => {
+        showModelHistory.value = false;
+      }, 200);
     };
 
     const handleOverlayClick = () => {
@@ -156,14 +286,24 @@ export default {
     onMounted(() => {
       loadConfig();
       testEverything();
+      // 初始化模型历史记录
+      filteredModelHistory.value = modelHistory.value;
     });
 
     return {
       config,
       isSaving,
       everythingStatus,
+      isTesting,
+      testMessage,
+      testSuccess,
+      showModelHistory,
+      filteredModelHistory,
       saveConfig,
       testEverything,
+      filterModelHistory,
+      selectModel,
+      hideModelHistoryDelayed,
       handleOverlayClick
     };
   }
@@ -393,5 +533,88 @@ export default {
   background: var(--text-muted);
   border-color: var(--text-muted);
   cursor: not-allowed;
+}
+
+/* 字段配置样式 */
+.field-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.field-config-item {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--primary-color);
+}
+
+/* 模型输入框样式 */
+.model-input-container {
+  position: relative;
+}
+
+.model-input {
+  width: 100%;
+}
+
+.model-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: var(--shadow-lg);
+}
+
+.model-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: background-color 0.2s ease;
+}
+
+.model-dropdown-item:hover {
+  background: var(--background-color);
+}
+
+/* 测试消息样式 */
+.test-message {
+  padding: 8px 12px;
+  margin-top: 12px;
+  font-size: 14px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+.test-message.success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.test-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #dc2626;
 }
 </style> 

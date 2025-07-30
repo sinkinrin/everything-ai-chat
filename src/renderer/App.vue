@@ -86,6 +86,34 @@
             修改时间
           </div>
           <div
+            v-if="displayFields.created"
+            @click="sortBy('created')"
+            :class="['file-list-column', 'col-created', 'sortable', getSortClass('created')]"
+          >
+            创建时间
+          </div>
+          <div
+            v-if="displayFields.accessed"
+            @click="sortBy('accessed')"
+            :class="['file-list-column', 'col-accessed', 'sortable', getSortClass('accessed')]"
+          >
+            访问时间
+          </div>
+          <div
+            v-if="displayFields.attributes"
+            @click="sortBy('attributes')"
+            :class="['file-list-column', 'col-attributes', 'sortable', getSortClass('attributes')]"
+          >
+            属性
+          </div>
+          <div
+            v-if="displayFields.run_count"
+            @click="sortBy('run_count')"
+            :class="['file-list-column', 'col-run-count', 'sortable', getSortClass('run_count')]"
+          >
+            运行次数
+          </div>
+          <div
             @click="sortBy('extension')"
             :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]"
           >
@@ -112,6 +140,18 @@
             </div>
             <div class="file-cell col-modified">
               <span class="file-modified">{{ formatDate(file.modified) }}</span>
+            </div>
+            <div v-if="displayFields.created" class="file-cell col-created">
+              <span class="file-created">{{ formatDate(file.created) }}</span>
+            </div>
+            <div v-if="displayFields.accessed" class="file-cell col-accessed">
+              <span class="file-accessed">{{ formatDate(file.accessed) }}</span>
+            </div>
+            <div v-if="displayFields.attributes" class="file-cell col-attributes">
+              <span class="file-attributes">{{ file.attributes || '-' }}</span>
+            </div>
+            <div v-if="displayFields.run_count" class="file-cell col-run-count">
+              <span class="file-run-count">{{ file.run_count || 0 }}</span>
             </div>
             <div class="file-cell col-type">
               <span class="file-type">{{ file.extension || 'FILE' }}</span>
@@ -180,6 +220,16 @@ export default {
     const showConfigDialog = ref(false);
     const lastSearchQuery = ref('');
     const lastEverythingQuery = ref('');
+    
+    // 字段显示配置
+    const displayFields = ref({
+      accessed: false,
+      attributes: false,
+      created: false,
+      recently_changed: false,
+      run_count: false,
+      file_list_filename: false
+    });
 
     // 排序状态
     const sortState = reactive({
@@ -244,6 +294,12 @@ export default {
         if (result.success) {
           searchResults.value = result.results || [];
           lastEverythingQuery.value = result.everythingQuery || query;
+          
+          // 在控制台打印搜索结果列表
+          console.log('🔍 搜索完成 - 查询:', query);
+          console.log('📋 搜索结果数量:', searchResults.value.length);
+          console.log('📄 搜索结果列表:', searchResults.value);
+          
           await loadSearchHistory(); // 重新加载历史记录
         } else {
           errorMessage.value = result.error || '搜索失败';
@@ -265,6 +321,17 @@ export default {
         searchHistory.value = history || [];
       } catch (error) {
         console.error('加载搜索历史失败:', error);
+      }
+    };
+
+    const loadDisplayFieldsConfig = async () => {
+      try {
+        const config = await window.electronAPI.getOpenAIConfig();
+        if (config && config.displayFields) {
+          displayFields.value = { ...displayFields.value, ...config.displayFields };
+        }
+      } catch (error) {
+        console.error('加载字段显示配置失败:', error);
       }
     };
 
@@ -373,6 +440,7 @@ export default {
     // 生命周期
     onMounted(() => {
       loadSearchHistory();
+      loadDisplayFieldsConfig();
     });
 
     return {
@@ -389,6 +457,7 @@ export default {
       lastSearchQuery,
       lastEverythingQuery,
       searchInput,
+      displayFields,
       
       // 计算属性
       filteredHistory,
