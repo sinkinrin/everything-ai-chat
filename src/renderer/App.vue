@@ -48,19 +48,19 @@
           >
             {{ isSearching ? '搜索中...' : '搜索' }}
           </button>
-        </div>
 
-        <!-- 搜索历史下拉 -->
-        <div v-if="showHistory && filteredHistory.length > 0" class="search-history">
-          <div
-            v-for="(item, index) in filteredHistory"
-            :key="item.id"
-            @click="selectHistoryItem(item)"
-            :class="['search-history-item', { active: historySelectedIndex === index }]"
-          >
-            <div class="search-history-query">{{ item.query }}</div>
-            <div v-if="item.everything_query !== item.query" class="search-history-everything">
-              {{ item.everything_query }}
+          <!-- 搜索历史下拉 -->
+          <div v-if="showHistory && filteredHistory.length > 0" class="search-history">
+            <div
+              v-for="(item, index) in filteredHistory"
+              :key="item.id"
+              @click="selectHistoryItem(item)"
+              :class="['search-history-item', { active: historySelectedIndex === index }]"
+            >
+              <div class="search-history-query">{{ item.query }}</div>
+              <div v-if="item.everything_query !== item.query" class="search-history-everything">
+                {{ item.everything_query }}
+              </div>
             </div>
           </div>
         </div>
@@ -164,7 +164,7 @@
           >
             <div class="file-cell col-name">
               <span class="file-icon">{{ getFileIcon(file.extension) }}</span>
-              <span class="file-name">{{ file.name }}</span>
+              <span class="file-name">{{ getDisplayFileName(file) }}</span>
             </div>
             <div class="file-cell col-path">
               <span class="file-path">{{ file.directory }}</span>
@@ -512,6 +512,24 @@ export default {
       performSearch();
     };
 
+    // 获取显示文件名（确保包含扩展名）
+    const getDisplayFileName = (file) => {
+      if (!file || !file.name) return '';
+      
+      // 如果文件名已经包含扩展名，直接返回
+      if (file.extension && file.name.toLowerCase().endsWith('.' + file.extension.toLowerCase())) {
+        return file.name;
+      }
+      
+      // 如果文件名不包含扩展名，添加扩展名
+      if (file.extension && !file.name.includes('.')) {
+        return `${file.name}.${file.extension.toLowerCase()}`;
+      }
+      
+      // 如果没有扩展名信息，返回原始文件名
+      return file.name;
+    };
+
     // 获取文件类型图标
     const getFileIcon = (extension) => {
       const ext = extension?.toLowerCase() || '';
@@ -685,7 +703,8 @@ export default {
       checkEverythingStatus,
 
       // 辅助方法
-      getFileIcon
+      getFileIcon,
+      getDisplayFileName
     };
   }
 };

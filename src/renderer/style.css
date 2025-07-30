@@ -257,11 +257,11 @@ body {
 
 /* Hero搜索区域 */
 .search-section {
-  padding: 30px 20px;
+  padding: 20px 20px;
   background: var(--primary-gradient);
   position: relative;
   z-index: 5;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* 添加几何图案背景 */
@@ -288,9 +288,9 @@ body {
 .search-title {
   text-align: center;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   opacity: 0;
   animation: titleSlideIn 0.8s var(--easing) 0.3s forwards;
@@ -314,12 +314,13 @@ body {
   background: var(--card-background);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--shadow-glass);
-  padding: 8px;
+  padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   opacity: 0;
   animation: cardSlideIn 0.8s var(--easing) 0.5s forwards;
+  z-index: 20;
 }
 
 @keyframes cardSlideIn {
@@ -335,14 +336,14 @@ body {
 
 .search-input {
   flex: 1;
-  height: 56px;
-  padding: 0 24px;
+  height: 40px;
+  padding: 0 16px;
   border: none;
   background: transparent;
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-primary);
   outline: none;
-  border-radius: 12px;
+  border-radius: 10px;
   transition: all var(--transition-normal) var(--easing);
 }
 
@@ -356,13 +357,13 @@ body {
 }
 
 .search-button {
-  height: 56px;
-  padding: 0 32px;
+  height: 40px;
+  padding: 0 20px;
   background: var(--primary-gradient);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 15px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-normal) var(--easing);
