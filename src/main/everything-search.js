@@ -68,19 +68,17 @@ class EverythingSearch {
       count: options.count || 1000,
       offset: options.offset || 0,
       sort: options.sort || 'name',
-      // 获取所有可能的列信息
+      ascending: options.ascending !== undefined ? options.ascending : 1,
+      // 根据官方API文档，只使用支持的列参数
       path_column: 1,                    // 完整路径
       size_column: 1,                    // 文件大小
       date_modified_column: 1,           // 修改日期
-      date_created_column: 1,            // 创建日期
-      date_accessed_column: 1,           // 访问日期
-      attributes_column: 1,              // 文件属性
-      file_list_filename_column: 1,      // 文件列表文件名
-      run_count_column: 1,               // 运行次数
-      date_recently_changed_column: 1,   // 最近更改日期
-      highlighted_filename_column: 1,    // 高亮文件名
-      highlighted_path_column: 1,        // 高亮路径
-      highlighted_full_path_and_filename_column: 1  // 高亮完整路径和文件名
+      // 可选的搜索参数
+      case: options.case || 0,           // 大小写匹配
+      wholeword: options.wholeword || 0, // 全词匹配
+      path: options.path || 0,           // 路径搜索
+      regex: options.regex || 0,         // 正则表达式搜索
+      diacritics: options.diacritics || 0 // 匹配变音符号
     };
 
     const queryStr = querystring.stringify(searchParams);
@@ -160,8 +158,8 @@ class EverythingSearch {
 
       if (item.path) {
         // 如果有完整路径，使用完整路径
-        filePath = item.path;
-        fileName = path.basename(filePath);
+        filePath = path.join(item.path, item.name);
+        fileName = item.name;
         fileDir = path.dirname(filePath);
         fileExt = path.extname(fileName);
       } else if (item.name) {
@@ -228,11 +226,8 @@ class EverythingSearch {
         }
       };
 
-      // 处理所有时间字段
+      // 处理时间字段（只处理API支持的字段）
       const finalModified = convertFileTime(item.date_modified) || modifiedDate;
-      const finalCreated = convertFileTime(item.date_created);
-      const finalAccessed = convertFileTime(item.date_accessed);
-      const finalRecentlyChanged = convertFileTime(item.date_recently_changed);
 
       const formatted = {
         // 基本信息
@@ -245,27 +240,10 @@ class EverythingSearch {
         // 文件大小
         size: finalSize,
 
-        // 时间信息
+        // 时间信息（只包含API支持的字段）
         modified: finalModified,
-        created: finalCreated,
-        accessed: finalAccessed,
-        recently_changed: finalRecentlyChanged,
 
-        // 文件属性
-        attributes: item.attributes || '',
-
-        // 运行信息
-        run_count: item.run_count || 0,
-
-        // 高亮信息（用于搜索结果显示）
-        highlighted_filename: item.highlighted_filename || fileName,
-        highlighted_path: item.highlighted_path || filePath,
-        highlighted_full_path: item.highlighted_full_path_and_filename || filePath,
-
-        // 其他信息
-        file_list_filename: item.file_list_filename || '',
-
-        // 原始数据（调试用）
+        // 原始数据（调试用，包含Everything返回的所有字段）
         raw_data: item
       };
 
