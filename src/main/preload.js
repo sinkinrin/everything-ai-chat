@@ -18,5 +18,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (filePath) => ipcRenderer.invoke('open-path', filePath),
   
   // 显示文件在文件管理器中
-  showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath)
+  showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath),
+  
+  // 窗口控制
+  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+  toggleMaximize: () => ipcRenderer.invoke('toggle-maximize'),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
+  
+  // Everything连接状态
+  testEverythingConnection: () => ipcRenderer.invoke('test-everything-connection'),
+  
+  // 一键连接Everything服务
+  autoConnectEverything: () => ipcRenderer.invoke('auto-connect-everything'),
+  
+  // 手动设置Everything路径
+  setEverythingPath: (userPath) => ipcRenderer.invoke('set-everything-path', userPath),
+  
+  // 获取Everything配置
+  getEverythingConfig: () => ipcRenderer.invoke('get-everything-config')
 }); 

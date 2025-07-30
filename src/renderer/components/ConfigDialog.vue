@@ -120,7 +120,7 @@
         <div class="config-section">
           <h3>Everything 设置</h3>
           <p class="config-description">
-            确保Everything软件已安装并启用了命令行支持
+            自动配置Everything HTTP服务，或手动设置连接参数
           </p>
 
           <div class="status-item">
@@ -135,14 +135,132 @@
             {{ testMessage }}
           </div>
 
+          <!-- 一键连接功能 -->
+          <div class="auto-connect-section">
+            <h4>🚀 一键连接Everything服务</h4>
+            <p class="section-description">
+              自动搜索Everything安装位置，配置HTTP服务并启动连接
+            </p>
+            
+            <div class="action-buttons">
+              <button 
+                @click="autoConnectEverything" 
+                :disabled="isAutoConnecting" 
+                class="auto-connect-button primary"
+              >
+                {{ isAutoConnecting ? '连接中...' : '🔗 一键连接Everything服务' }}
+              </button>
+              
+              <button 
+                @click="showManualPath = !showManualPath" 
+                class="manual-path-button secondary"
+                :disabled="isAutoConnecting"
+              >
+                📁 手动设置路径
+              </button>
+            </div>
+
+            <!-- 手动路径设置 -->
+            <div v-if="showManualPath" class="manual-path-section">
+              <div class="form-group">
+                <label for="everythingPath">Everything安装路径</label>
+                <input
+                  id="everythingPath"
+                  v-model="manualPath"
+                  type="text"
+                  placeholder="例如: C:\Program Files\Everything\Everything.exe"
+                  class="form-input"
+                />
+                <small class="form-help">
+                  可以输入Everything.exe的完整路径，或者安装目录路径
+                </small>
+              </div>
+              <button 
+                @click="setManualPath" 
+                :disabled="!manualPath.trim() || isManualSetting"
+                class="set-path-button"
+              >
+                {{ isManualSetting ? '设置中...' : '确认设置' }}
+              </button>
+            </div>
+
+            <!-- 操作进度显示 -->
+            <div v-if="autoConnectProgress.length > 0" class="progress-section">
+              <h5>连接进度:</h5>
+              <ul class="progress-list">
+                <li 
+                  v-for="(step, index) in autoConnectProgress" 
+                  :key="index"
+                  :class="['progress-item', step.status]"
+                >
+                  <span class="progress-icon">{{ getProgressIcon(step.status) }}</span>
+                  <span class="progress-text">{{ step.message }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- 连接结果 -->
+            <div v-if="autoConnectResult" class="result-section">
+              <div 
+                class="result-message" 
+                :class="{ success: autoConnectResult.success, error: !autoConnectResult.success }"
+              >
+                {{ autoConnectResult.message }}
+              </div>
+              <div v-if="autoConnectResult.success && autoConnectResult.port" class="result-details">
+                <p>🌐 HTTP服务端口: {{ autoConnectResult.port }}</p>
+                <p v-if="autoConnectResult.installPath">📁 安装路径: {{ autoConnectResult.installPath }}</p>
+                <div v-if="autoConnectResult.credentials" class="credentials-section">
+                  <p class="credentials-title">🔐 访问凭据（请妥善保存）:</p>
+                  <div class="credential-item">
+                    <span class="credential-label">用户名:</span>
+                    <span class="credential-value">{{ autoConnectResult.credentials.username }}</span>
+                    <button @click="copyToClipboard(autoConnectResult.credentials.username)" class="copy-button" title="复制用户名">📋</button>
+                  </div>
+                  <div class="credential-item">
+                    <span class="credential-label">密码:</span>
+                    <span class="credential-value">{{ showPassword ? autoConnectResult.credentials.password : '•'.repeat(12) }}</span>
+                    <button @click="togglePasswordVisibility" class="toggle-password-button" :title="showPassword ? '隐藏密码' : '显示密码'">
+                      {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+                    </button>
+                    <button @click="copyToClipboard(autoConnectResult.credentials.password)" class="copy-button" title="复制密码">📋</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 当前配置信息 -->
+          <div class="current-config">
+            <h4>当前配置</h4>
+            <div class="config-info">
+              <div class="config-item">
+                <span class="config-label">HTTP端口:</span>
+                <span class="config-value">{{ everythingConfig.port || '未设置' }}</span>
+              </div>
+              <div class="config-item">
+                <span class="config-label">安装路径:</span>
+                <span class="config-value">{{ everythingConfig.installPath || '未设置' }}</span>
+              </div>
+              <div class="config-item">
+                <span class="config-label">认证状态:</span>
+                <span class="config-value">{{ everythingConfig.hasCredentials ? '✅ 已启用' : '❌ 未启用' }}</span>
+              </div>
+              <div v-if="everythingConfig.hasCredentials" class="config-item">
+                <span class="config-label">登录用户:</span>
+                <span class="config-value">{{ everythingConfig.username || '未设置' }}</span>
+              </div>
+            </div>
+          </div>
+
           <div class="info-box">
-            <h4>如何启用Everything命令行支持：</h4>
-            <ol>
-              <li>打开Everything软件</li>
-              <li>工具 → 选项 → 常规</li>
-              <li>勾选"启用HTTP服务器"</li>
-              <li>确保es.exe在系统PATH中或Everything安装目录</li>
-            </ol>
+            <h4>说明:</h4>
+            <ul>
+              <li><strong>一键连接</strong>: 自动搜索Everything安装位置，配置HTTP服务，无需手动操作</li>
+              <li><strong>自动处理</strong>: 会自动关闭现有Everything进程，修改配置文件，重启服务</li>
+              <li><strong>端口选择</strong>: 自动选择未被占用的端口（优先8080、8888等）</li>
+              <li><strong>兼容性</strong>: 支持Everything 1.4及以上版本</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -158,7 +276,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, toRaw } from 'vue';
 
 export default {
   name: 'ConfigDialog',
@@ -183,6 +301,21 @@ export default {
     const isTesting = ref(false);
     const testMessage = ref('');
     const testSuccess = ref(false);
+    
+    // 一键连接相关状态
+    const isAutoConnecting = ref(false);
+    const autoConnectProgress = ref([]);
+    const autoConnectResult = ref(null);
+    const showManualPath = ref(false);
+    const manualPath = ref('');
+    const isManualSetting = ref(false);
+    const everythingConfig = ref({
+      port: 80,
+      installPath: '',
+      hasCredentials: false,
+      username: ''
+    });
+    const showPassword = ref(false);
     
     // 模型历史记录相关
     const showModelHistory = ref(false);
@@ -212,7 +345,10 @@ export default {
     const saveConfig = async () => {
       isSaving.value = true;
       try {
-        const result = await window.electronAPI.setOpenAIConfig(config);
+        // 使用 JSON 方法彻底移除所有 reactive 特性
+        const configData = JSON.parse(JSON.stringify(toRaw(config)));
+        
+        const result = await window.electronAPI.setOpenAIConfig(configData);
         if (result.success) {
           emit('close');
         } else {
@@ -283,8 +419,140 @@ export default {
       emit('close');
     };
 
+    // 一键连接Everything服务
+    const autoConnectEverything = async () => {
+      isAutoConnecting.value = true;
+      autoConnectProgress.value = [];
+      autoConnectResult.value = null;
+      
+      try {
+        // 添加进度步骤
+        const addProgress = (message, status = 'running') => {
+          autoConnectProgress.value.push({ message, status });
+        };
+
+        addProgress('开始一键连接Everything服务...');
+        
+        const result = await window.electronAPI.autoConnectEverything();
+        
+        if (result.success) {
+          addProgress('Everything HTTP服务连接成功！', 'success');
+          autoConnectResult.value = {
+            success: true,
+            message: result.message,
+            port: result.port,
+            installPath: result.installPath
+          };
+          
+          // 更新状态并重新测试连接
+          await loadEverythingConfig();
+          await testEverything();
+        } else {
+          addProgress('连接失败: ' + result.error, 'error');
+          autoConnectResult.value = {
+            success: false,
+            message: result.error
+          };
+        }
+        
+      } catch (error) {
+        console.error('一键连接失败:', error);
+        autoConnectProgress.value.push({
+          message: '连接过程中发生错误: ' + error.message,
+          status: 'error'
+        });
+        autoConnectResult.value = {
+          success: false,
+          message: '连接过程中发生错误: ' + error.message
+        };
+      } finally {
+        isAutoConnecting.value = false;
+      }
+    };
+
+    // 手动设置Everything路径
+    const setManualPath = async () => {
+      if (!manualPath.value.trim()) return;
+      
+      isManualSetting.value = true;
+      
+      try {
+        const result = await window.electronAPI.setEverythingPath(manualPath.value);
+        
+        if (result.success) {
+          autoConnectResult.value = {
+            success: true,
+            message: result.message,
+            installPath: result.installPath
+          };
+          
+          await loadEverythingConfig();
+          showManualPath.value = false;
+          manualPath.value = '';
+        } else {
+          autoConnectResult.value = {
+            success: false,
+            message: result.error
+          };
+        }
+        
+      } catch (error) {
+        console.error('设置路径失败:', error);
+        autoConnectResult.value = {
+          success: false,
+          message: '设置路径失败: ' + error.message
+        };
+      } finally {
+        isManualSetting.value = false;
+      }
+    };
+
+    // 加载Everything配置
+    const loadEverythingConfig = async () => {
+      try {
+        const config = await window.electronAPI.getEverythingConfig();
+        everythingConfig.value = config;
+      } catch (error) {
+        console.error('加载Everything配置失败:', error);
+      }
+    };
+
+    // 获取进度图标
+    const getProgressIcon = (status) => {
+      switch (status) {
+        case 'success': return '✅';
+        case 'error': return '❌';
+        case 'running': return '🔄';
+        default: return '⏳';
+      }
+    };
+
+    // 复制到剪贴板
+    const copyToClipboard = async (text) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        // 简单的成功提示
+        console.log('已复制到剪贴板:', text);
+      } catch (error) {
+        console.error('复制失败:', error);
+        // 备用方法
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    };
+
+    // 切换密码显示/隐藏
+    const togglePasswordVisibility = () => {
+      showPassword.value = !showPassword.value;
+    };
+
     onMounted(() => {
       loadConfig();
+      loadEverythingConfig();
       testEverything();
       // 初始化模型历史记录
       filteredModelHistory.value = modelHistory.value;
@@ -299,12 +567,29 @@ export default {
       testSuccess,
       showModelHistory,
       filteredModelHistory,
+      
+      // 一键连接相关
+      isAutoConnecting,
+      autoConnectProgress,
+      autoConnectResult,
+      showManualPath,
+      manualPath,
+      isManualSetting,
+      everythingConfig,
+      showPassword,
+      
+      // 方法
       saveConfig,
       testEverything,
       filterModelHistory,
       selectModel,
       hideModelHistoryDelayed,
-      handleOverlayClick
+      handleOverlayClick,
+      autoConnectEverything,
+      setManualPath,
+      getProgressIcon,
+      copyToClipboard,
+      togglePasswordVisibility
     };
   }
 };
@@ -317,42 +602,74 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: overlayFadeIn 0.3s ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .config-dialog {
-  background: var(--surface-color);
-  width: 600px;
+  background: var(--surface);
+  width: 700px;
   max-width: 90vw;
   max-height: 90vh;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 16px;
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
+  animation: dialogSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .config-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,255,0.95) 100%);
+  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
 }
 
 .config-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 50%;
+  font-size: 18px;
   cursor: pointer;
   color: var(--text-secondary);
   width: 32px;
@@ -360,21 +677,31 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
+  transition: all var(--transition-normal) var(--easing);
 }
 
 .close-button:hover {
-  color: var(--text-primary);
+  color: var(--error-color);
+  background: rgba(250, 112, 154, 0.1);
+  border-color: var(--error-color);
+  transform: scale(1.05);
 }
 
 .config-content {
   flex: 1;
-  padding: 20px;
+  padding: 24px;
   overflow-y: auto;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,255,0.9) 100%);
 }
 
 .config-section {
   margin-bottom: 32px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .config-section:last-child {
@@ -382,9 +709,18 @@ export default {
 }
 
 .config-section h3 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-section h3::before {
+  content: '⚙️';
+  font-size: 16px;
 }
 
 .config-description {
@@ -409,19 +745,25 @@ export default {
 .form-input,
 .form-select {
   width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--border-color);
-  background: var(--surface-color);
-  font-size: 14px;
+  height: 44px;
+  padding: 0 16px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 15px;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all var(--transition-normal) var(--easing);
 }
 
 .form-input:focus,
 .form-select:focus {
   border-color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
 }
 
 .form-help {
@@ -435,42 +777,61 @@ export default {
 .status-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
   margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .status-indicator {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   background: var(--error-color);
-  transition: background-color 0.2s ease;
+  transition: all var(--transition-normal) var(--easing);
+  box-shadow: 0 0 0 3px rgba(250, 112, 154, 0.2);
 }
 
 .status-indicator.active {
   background: var(--success-color);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2), 0 0 10px rgba(74, 222, 128, 0.3);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .test-button {
-  padding: 4px 12px;
-  background: var(--primary-color);
+  padding: 8px 16px;
+  background: var(--primary-gradient);
   color: white;
   border: none;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all var(--transition-normal) var(--easing);
+  box-shadow: var(--shadow-soft);
 }
 
 .test-button:hover {
-  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
 }
 
 .info-box {
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
   padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .info-box h4 {
@@ -494,45 +855,55 @@ export default {
 .config-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 20px;
-  border-top: 1px solid var(--border-color);
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,255,0.95) 100%);
+  border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
 .cancel-button,
 .save-button {
-  padding: 8px 20px;
-  border: 1px solid var(--border-color);
-  font-size: 14px;
+  padding: 12px 24px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal) var(--easing);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .cancel-button {
-  background: var(--surface-color);
+  background: rgba(255, 255, 255, 0.8);
   color: var(--text-secondary);
+  border-color: rgba(102, 126, 234, 0.2);
 }
 
 .cancel-button:hover {
-  background: var(--background-color);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--text-primary);
+  border-color: rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
 }
 
 .save-button {
-  background: var(--primary-color);
+  background: var(--primary-gradient);
   color: white;
-  border-color: var(--primary-color);
+  border-color: transparent;
+  box-shadow: var(--shadow-medium);
 }
 
 .save-button:hover:not(:disabled) {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-strong);
 }
 
 .save-button:disabled {
-  background: var(--text-muted);
-  border-color: var(--text-muted);
+  background: var(--gray-400);
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* 字段配置样式 */
@@ -576,13 +947,16 @@ export default {
   top: 100%;
   left: 0;
   right: 0;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(102, 126, 234, 0.2);
   border-top: none;
+  border-radius: 0 0 8px 8px;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-glass);
 }
 
 .model-dropdown-item {
@@ -616,5 +990,321 @@ export default {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.3);
   color: #dc2626;
+}
+
+/* 一键连接功能样式 */
+.auto-connect-section {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.auto-connect-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.section-description {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.auto-connect-button,
+.manual-path-button,
+.set-path-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auto-connect-button.primary {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: var(--shadow-medium);
+  border-radius: 10px;
+}
+
+.auto-connect-button.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-strong);
+}
+
+.manual-path-button.secondary {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.manual-path-button.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-primary);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.set-path-button {
+  background: var(--primary-gradient);
+  color: white;
+  margin-top: 8px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.set-path-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+.auto-connect-button:disabled,
+.manual-path-button:disabled,
+.set-path-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 手动路径设置样式 */
+.manual-path-section {
+  background: rgba(79, 70, 229, 0.05);
+  border: 1px solid rgba(79, 70, 229, 0.1);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+/* 进度显示样式 */
+.progress-section {
+  margin-top: 20px;
+}
+
+.progress-section h5 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.progress-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.progress-item.success {
+  color: #16a34a;
+}
+
+.progress-item.error {
+  color: #dc2626;
+}
+
+.progress-item.running {
+  color: var(--primary-color);
+}
+
+.progress-icon {
+  width: 16px;
+  text-align: center;
+}
+
+.progress-text {
+  flex: 1;
+}
+
+/* 结果显示样式 */
+.result-section {
+  margin-top: 20px;
+}
+
+.result-message {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.result-message.success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.result-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+
+.result-details {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.result-details p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* 当前配置样式 */
+.current-config {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.current-config h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.config-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.config-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.config-value {
+  color: var(--text-primary);
+  font-family: 'Consolas', 'Monaco', monospace;
+  background: var(--background-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 凭据显示样式 */
+.credentials-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(34, 197, 94, 0.05);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 6px;
+}
+
+.credentials-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.credential-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.credential-label {
+  min-width: 60px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.credential-value {
+  flex: 1;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--background-color);
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.copy-button,
+.toggle-password-button {
+  padding: 4px 6px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-button:hover,
+.toggle-password-button:hover {
+  background: var(--primary-hover);
+  transform: scale(1.05);
+}
+
+.toggle-password-button {
+  background: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.toggle-password-button:hover {
+  background: var(--text-primary);
 }
 </style> 

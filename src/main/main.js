@@ -3,6 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const OpenAI = require('openai');
 const EverythingSearch = require('./everything-search');
+const EverythingManager = require('./everything-manager');
 
 // 初始化配置存储
 const store = new Store();
@@ -21,6 +22,9 @@ let openai;
 // Everything搜索实例
 let everythingSearch;
 
+// Everything管理器实例
+let everythingManager;
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -32,8 +36,8 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    titleBarStyle: 'default',
-    frame: true,
+    titleBarStyle: 'hidden',
+    frame: false,
     show: false
   });
 
@@ -150,7 +154,20 @@ Everything搜索语法规则：
 
 // 初始化Everything搜索
 function initEverythingSearch() {
-  everythingSearch = new EverythingSearch('localhost', 80);
+  const port = store.get('everything.port', 80);
+  const credentials = store.get('everything.credentials', null);
+  
+  everythingSearch = new EverythingSearch('localhost', port);
+  
+  // 如果有保存的凭据，设置到搜索实例
+  if (credentials) {
+    everythingSearch.setCredentials(credentials.username, credentials.password);
+  }
+}
+
+// 初始化Everything管理器
+function initEverythingManager() {
+  everythingManager = new EverythingManager();
 }
 
 // 保存搜索历史
@@ -234,9 +251,124 @@ ipcMain.handle('show-in-folder', async (event, filePath) => {
   }
 });
 
+// 窗口控制 - 最小化
+ipcMain.handle('minimize-window', () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow) {
+    focusedWindow.minimize();
+  }
+});
+
+// 窗口控制 - 最大化/还原
+ipcMain.handle('toggle-maximize', () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow) {
+    if (focusedWindow.isMaximized()) {
+      focusedWindow.unmaximize();
+      return false;
+    } else {
+      focusedWindow.maximize();
+      return true;
+    }
+  }
+  return false;
+});
+
+// 窗口控制 - 关闭
+ipcMain.handle('close-window', () => {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow) {
+    focusedWindow.close();
+  }
+});
+
+// Everything连接状态检测
+ipcMain.handle('test-everything-connection', async () => {
+  try {
+    if (!everythingSearch) {
+      initEverythingSearch();
+    }
+    return await everythingSearch.testConnection();
+  } catch (error) {
+    console.error('Everything连接测试失败:', error);
+    return false;
+  }
+});
+
+// 一键连接Everything服务
+ipcMain.handle('auto-connect-everything', async () => {
+  try {
+    if (!everythingManager) {
+      initEverythingManager();
+    }
+    
+    const result = await everythingManager.autoConnect();
+    
+    if (result.success) {
+      // 更新Everything搜索实例的端口和凭据
+      everythingSearch = new EverythingSearch('localhost', result.port);
+      
+      // 保存配置到store
+      store.set('everything.port', result.port);
+      store.set('everything.installPath', result.installPath);
+      
+      // 保存凭据信息（加密存储）
+      if (result.credentials) {
+        store.set('everything.credentials', result.credentials);
+        // 更新EverythingSearch实例的凭据
+        everythingSearch.setCredentials(result.credentials.username, result.credentials.password);
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('一键连接Everything失败:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// 手动设置Everything路径
+ipcMain.handle('set-everything-path', async (event, userPath) => {
+  try {
+    if (!everythingManager) {
+      initEverythingManager();
+    }
+    
+    const installPath = await everythingManager.setManualPath(userPath);
+    store.set('everything.installPath', installPath);
+    
+    return {
+      success: true,
+      installPath: installPath,
+      message: 'Everything路径设置成功'
+    };
+  } catch (error) {
+    console.error('设置Everything路径失败:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// 获取Everything配置
+ipcMain.handle('get-everything-config', async () => {
+  const credentials = store.get('everything.credentials', null);
+  return {
+    port: store.get('everything.port', 80),
+    installPath: store.get('everything.installPath', ''),
+    hasCredentials: !!credentials,
+    username: credentials ? credentials.username : '',
+  };
+});
+
 app.whenReady().then(() => {
   initOpenAI();
   initEverythingSearch();
+  initEverythingManager();
   createWindow();
 
   app.on('activate', () => {

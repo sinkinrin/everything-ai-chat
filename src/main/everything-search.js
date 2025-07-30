@@ -8,6 +8,16 @@ class EverythingSearch {
     this.host = host;
     this.port = port;
     this.baseUrl = `http://${host}:${port}`;
+    this.username = null;
+    this.password = null;
+  }
+
+  /**
+   * 设置认证凭据
+   */
+  setCredentials(username, password) {
+    this.username = username;
+    this.password = password;
   }
 
   /**
@@ -15,13 +25,23 @@ class EverythingSearch {
    */
   async testConnection() {
     return new Promise((resolve) => {
-      const req = http.request({
+      const options = {
         hostname: this.host,
         port: this.port,
         path: '/',
         method: 'GET',
         timeout: 5000
-      }, (res) => {
+      };
+
+      // 如果有认证凭据，添加基本认证头
+      if (this.username && this.password) {
+        const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+        options.headers = {
+          'Authorization': `Basic ${auth}`
+        };
+      }
+
+      const req = http.request(options, (res) => {
         resolve(res.statusCode === 200);
       });
 
@@ -69,7 +89,23 @@ class EverythingSearch {
     console.log('🌐 [Everything API] 请求URL:', url);
 
     return new Promise((resolve, reject) => {
-      const req = http.request(url, (res) => {
+      const options = {
+        hostname: this.host,
+        port: this.port,
+        path: `/?${queryStr}`,
+        method: 'GET',
+        timeout: 30000
+      };
+
+      // 如果有认证凭据，添加基本认证头
+      if (this.username && this.password) {
+        const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+        options.headers = {
+          'Authorization': `Basic ${auth}`
+        };
+      }
+
+      const req = http.request(options, (res) => {
         let data = '';
 
         res.on('data', (chunk) => {
@@ -78,6 +114,9 @@ class EverythingSearch {
 
         res.on('end', () => {
           try {
+            if (res.statusCode === 401) {
+              throw new Error('认证失败：用户名或密码错误');
+            }
             if (res.statusCode !== 200) {
               throw new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`);
             }
