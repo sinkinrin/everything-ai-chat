@@ -8,14 +8,14 @@
 [![Star History Chart](https://api.star-history.com/svg?repos=MaskerPRC/everything-ai-chat&type=Date)](https://star-history.com/#MaskerPRC/everything-ai-chat&Date)
 
 
-## 示例
+## 👣示例
 <img width="1500" height="1000" alt="image" src="https://github.com/user-attachments/assets/731dcaf7-9b13-4d71-900d-de8572ea9b12" />
 
 <img width="1799" height="1200" alt="image" src="https://github.com/user-attachments/assets/f54f4ddd-0e6d-443c-ac35-73c1dc064d80" />
 
 <img width="1799" height="1200" alt="image" src="https://github.com/user-attachments/assets/79d34f0d-ad0a-46a4-9456-4049209e8252" />
 
-## 欢迎加入微信交流群
+## 👀欢迎加入微信交流群
 ![100个AI产品交流群](https://github.com/user-attachments/assets/7405b63b-d369-404e-8c8b-e81e5745373e)
 
 
