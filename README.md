@@ -4,6 +4,7 @@
 
 ## 🌟 Star History
 **开发不易，求个小星星✨**
+
 [![Star History Chart](https://api.star-history.com/svg?repos=MaskerPRC/everything-ai-chat&type=Date)](https://star-history.com/#MaskerPRC/everything-ai-chat&Date)
 
 
