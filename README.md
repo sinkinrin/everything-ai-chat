@@ -16,6 +16,8 @@
 <img width="1799" height="1200" alt="image" src="https://github.com/user-attachments/assets/79d34f0d-ad0a-46a4-9456-4049209e8252" />
 
 ## 👀欢迎加入微信交流群
+https://100.agitao.net/
+
 ![100个AI产品交流群](https://github.com/user-attachments/assets/7405b63b-d369-404e-8c8b-e81e5745373e)
 
 
