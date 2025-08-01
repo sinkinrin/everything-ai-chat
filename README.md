@@ -2,6 +2,11 @@
 
 一个现代化的 Everything 搜索客户端，将 AI 智能与极速本地搜索完美结合。支持自然语言查询，自动转换为 Everything 精确搜索语法，让文件搜索变得前所未有的简单和高效。
 
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=MaskerPRC/everything-ai-chat&type=Date)](https://star-history.com/#MaskerPRC/everything-ai-chat&Date)
+
+
 ## 示例
 <img width="1500" height="1000" alt="image" src="https://github.com/user-attachments/assets/731dcaf7-9b13-4d71-900d-de8572ea9b12" />
 
