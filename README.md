@@ -18,7 +18,7 @@
 ## 👀欢迎加入微信交流群
 https://100.agitao.net/
 
-![100个AI产品交流群](https://github.com/user-attachments/assets/7405b63b-d369-404e-8c8b-e81e5745373e)
+![100个AI产品交流群](https://proxy.agitao.me/img)
 
 
 ## ✨ 核心特性
