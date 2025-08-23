@@ -89,7 +89,7 @@ cd everything-ai-chat
 npm install
 ```
 
-### 4. 配置OpenAI (可选)
+### 4. 配置OpenAI
 
 如需使用AI自然语言转换功能，需要配置OpenAI API:
 
