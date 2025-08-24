@@ -3,3 +3,5 @@
 dist-vue
 release
 leading_web/backend/config.js
+leading_web/backend/.env
+leading_web/frontend/dist
