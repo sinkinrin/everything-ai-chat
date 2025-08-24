@@ -251,7 +251,7 @@
                     查看源代码，参与开发，或报告技术问题
                   </p>
                   <a 
-                    href="https://github.com" 
+                    href="https://github.com/MaskerPRC/everything-ai-chat/releases/latest" 
                     target="_blank" 
                     class="btn btn-secondary"
                   >

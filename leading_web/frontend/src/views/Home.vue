@@ -12,15 +12,15 @@
             基于Everything搜索引擎的AI智能文件搜索客户端，让文件搜索更智能、更高效
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <router-link 
-              to="/download" 
+            <router-link
+              to="/download"
               class="btn btn-lg bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               <Download class="w-5 h-5 mr-2" />
               立即下载
             </router-link>
-            <router-link 
-              to="/features" 
+            <router-link
+              to="/features"
               class="btn btn-lg btn-outline border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg"
             >
               了解更多
@@ -28,7 +28,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 装饰性元素 -->
       <div class="absolute bottom-0 left-0 w-full">
         <svg class="w-full h-24" preserveAspectRatio="none" viewBox="0 0 1440 120">
@@ -48,10 +48,10 @@
             结合Everything的极速搜索能力和AI的智能理解，为您带来前所未有的文件搜索体验
           </p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div 
-            v-for="feature in keyFeatures" 
+          <div
+            v-for="feature in keyFeatures"
             :key="feature.title"
             class="card card-hover p-8 text-center"
           >
@@ -76,15 +76,15 @@
             简洁美观的设计，强大易用的功能
           </p>
         </div>
-        
+
         <div class="relative">
           <div class="bg-white rounded-2xl shadow-2xl p-8">
-            <div class="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
-              <div class="text-center">
-                <Monitor class="w-24 h-24 text-gray-400 mx-auto mb-4" />
-                <p class="text-gray-500 text-lg">产品截图占位</p>
-                <p class="text-gray-400 text-sm">实际界面效果展示</p>
-              </div>
+            <div class="aspect-video rounded-xl overflow-hidden">
+              <img
+                src="@/asserts/img.png"
+                alt="Everything AI Chat 产品界面截图"
+                class="w-full h-full object-scale-down"
+              />
             </div>
           </div>
         </div>
@@ -113,26 +113,26 @@
           <p class="text-xl text-gray-600 mb-8">
             听听用户怎么说，一起让产品变得更好
           </p>
-          <router-link 
-            to="/feedback" 
+          <router-link
+            to="/feedback"
             class="btn btn-primary"
           >
             查看更多反馈
           </router-link>
         </div>
-        
+
         <!-- 反馈预览卡片 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div 
-            v-for="feedback in recentFeedback" 
+          <div
+            v-for="feedback in recentFeedback"
             :key="feedback.id"
             class="card p-6"
           >
             <div class="flex items-start justify-between mb-4">
               <div class="flex items-center space-x-3">
-                <img 
-                  v-if="feedback.avatar_url" 
-                  :src="feedback.avatar_url" 
+                <img
+                  v-if="feedback.avatar_url"
+                  :src="feedback.avatar_url"
                   :alt="feedback.username"
                   class="w-10 h-10 rounded-full"
                 />
@@ -152,13 +152,13 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ feedback.title }}</h3>
             <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ feedback.description }}</p>
             <div class="flex items-center justify-between">
-              <span 
+              <span
                 class="tag"
                 :class="feedback.type === 'bug' ? 'tag-error' : 'tag-primary'"
               >
                 {{ feedback.type === 'bug' ? 'Bug' : '功能建议' }}
               </span>
-              <router-link 
+              <router-link
                 :to="`/feedback/${feedback.id}`"
                 class="text-sm text-primary-600 hover:text-primary-700"
               >
@@ -180,15 +180,15 @@
           立即下载Everything AI Chat，体验智能文件搜索的魅力
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <router-link 
-            to="/download" 
+          <router-link
+            to="/download"
             class="btn btn-primary btn-lg px-8 py-4 text-lg"
           >
             <Download class="w-5 h-5 mr-2" />
             免费下载
           </router-link>
-          <router-link 
-            to="/docs" 
+          <router-link
+            to="/docs"
             class="btn btn-secondary btn-lg px-8 py-4 text-lg"
           >
             <Book class="w-5 h-5 mr-2" />
@@ -202,9 +202,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { 
-  Download, Search, Zap, Brain, Shield, Monitor, 
-  ArrowUp, User, Book 
+import {
+  Download, Search, Zap, Brain, Shield, Monitor,
+  ArrowUp, User, Book
 } from 'lucide-vue-next'
 import { feedbackAPI } from '@/services/api'
 

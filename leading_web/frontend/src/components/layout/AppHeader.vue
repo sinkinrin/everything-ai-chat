@@ -8,9 +8,11 @@
             to="/" 
             class="flex items-center space-x-2 text-xl font-bold text-gray-900 hover:text-primary-600 transition-colors"
           >
-            <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <Search class="w-5 h-5 text-white" />
-            </div>
+            <img 
+              src="@/asserts/logo.png" 
+              alt="Everything AI Chat Logo" 
+              class="w-8 h-8 rounded-lg"
+            />
             <span>Everything AI Chat</span>
           </router-link>
         </div>

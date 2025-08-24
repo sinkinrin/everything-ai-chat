@@ -6,9 +6,11 @@
           <!-- 品牌信息 -->
           <div class="col-span-1 md:col-span-2">
             <div class="flex items-center space-x-2 mb-4">
-              <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <Search class="w-5 h-5 text-white" />
-              </div>
+              <img 
+                src="@/asserts/logo.png" 
+                alt="Everything AI Chat Logo" 
+                class="w-8 h-8 rounded-lg"
+              />
               <span class="text-xl font-bold">Everything AI Chat</span>
             </div>
             <p class="text-gray-400 mb-4 max-w-md">
@@ -70,14 +72,14 @@
             © {{ currentYear }} Everything AI Chat. 保留所有权利。
           </div>
           <div class="flex space-x-6">
-            <a 
+            <router-link 
               v-for="legal in legalLinks"
               :key="legal.name"
-              :href="legal.href"
+              :to="legal.to"
               class="text-gray-400 hover:text-white text-sm transition-colors"
             >
               {{ legal.name }}
-            </a>
+            </router-link>
           </div>
         </div>
       </div>
@@ -95,12 +97,12 @@ const currentYear = computed(() => new Date().getFullYear())
 const socialLinks = [
   {
     name: 'GitHub',
-    href: 'https://github.com',
+    href: 'https://github.com/MaskerPRC/everything-ai-chat',
     icon: Github
   },
   {
     name: 'Email',
-    href: 'mailto:support@example.com',
+    href: 'mailto:eac@jieshi.space',
     icon: Mail
   },
   {
@@ -128,8 +130,8 @@ const supportLinks = [
 
 // 法律链接
 const legalLinks = [
-  { name: '隐私政策', href: '/privacy' },
-  { name: '服务条款', href: '/terms' },
-  { name: 'Cookie政策', href: '/cookies' }
+  { name: '隐私政策', to: '/privacy' },
+  { name: '服务条款', to: '/terms' },
+  { name: 'Cookie政策', to: '/cookies' }
 ]
 </script>

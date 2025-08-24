@@ -11,6 +11,9 @@ const CreateFeedback = () => import('@/views/CreateFeedback.vue')
 const Docs = () => import('@/views/Docs.vue')
 const Login = () => import('@/views/Login.vue')
 const Profile = () => import('@/views/Profile.vue')
+const Privacy = () => import('@/views/Privacy.vue')
+const Terms = () => import('@/views/Terms.vue')
+const Cookie = () => import('@/views/Cookie.vue')
 const NotFound = () => import('@/views/NotFound.vue')
 
 const routes = [
@@ -86,6 +89,30 @@ const routes = [
     meta: {
       title: '个人中心 - Everything AI Chat',
       requiresAuth: true
+    }
+  },
+  {
+    path: '/privacy',
+    name: 'Privacy',
+    component: Privacy,
+    meta: {
+      title: '隐私政策 - Everything AI Chat'
+    }
+  },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: Terms,
+    meta: {
+      title: '服务条款 - Everything AI Chat'
+    }
+  },
+  {
+    path: '/cookies',
+    name: 'Cookie',
+    component: Cookie,
+    meta: {
+      title: 'Cookie政策 - Everything AI Chat'
     }
   },
   {

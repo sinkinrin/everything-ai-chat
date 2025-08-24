@@ -3,8 +3,12 @@
     <div class="max-w-md w-full space-y-8">
       <div class="text-center">
         <!-- Logo -->
-        <div class="mx-auto w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mb-6">
-          <Search class="w-8 h-8 text-white" />
+        <div class="mx-auto mb-6">
+          <img 
+            src="@/asserts/logo.png" 
+            alt="Everything AI Chat Logo" 
+            class="w-16 h-16 rounded-2xl mx-auto"
+          />
         </div>
         <h2 class="text-3xl font-bold text-gray-900 mb-2">
           登录 Everything AI Chat

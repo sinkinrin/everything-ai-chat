@@ -118,36 +118,36 @@ app.use('/api/auth', authRouter);
 async function startServer() {
   try {
     console.log('🚀 正在启动服务器...');
-    
+
     // 初始化数据库
     db = new Database(config.database.filename);
     await db.connect();
     await db.initTables();
     await db.seedData();
-    
+
     // 配置Passport
     configurePassport(config, db);
-    
+
     // 配置路由（需要数据库实例）
     app.use('/api/feedback', createFeedbackRoutes(db));
     app.use('/api/votes', createVoteRoutes(db));
     app.use('/api/downloads', createDownloadRoutes(db));
-    
+
     // 静态文件服务 - 提供前端构建文件
-    const frontendDistPath = path.join(__dirname, '../frontend/dist');
+    const frontendDistPath = path.join(__dirname, '../dist');
     app.use(express.static(frontendDistPath, {
       maxAge: '1h', // 静态资源缓存1小时
       etag: true,
       lastModified: true
     }));
-    
+
     // SPA 回退路由 - 对于所有非API路由，返回index.html
     app.get('*', (req, res, next) => {
       // 如果是API路由，交给下一个处理器（最终会到404）
       if (req.path.startsWith('/api/')) {
         return next();
       }
-      
+
       // 对于前端路由，返回index.html
       const indexPath = path.join(frontendDistPath, 'index.html');
       res.sendFile(indexPath, (err) => {
@@ -160,14 +160,14 @@ async function startServer() {
         }
       });
     });
-    
+
     // 错误处理中间件（必须在所有路由之后）
     app.use((err, req, res, next) => {
       console.error('服务器错误:', err);
-      
+
       // 不要在生产环境泄露错误详情
       const isDevelopment = config.nodeEnv === 'development';
-      
+
       res.status(err.status || 500).json({
         error: err.message || '内部服务器错误',
         ...(isDevelopment && { stack: err.stack })
@@ -181,7 +181,7 @@ async function startServer() {
         path: req.originalUrl
       });
     });
-    
+
     // 启动服务器
     app.listen(PORT, () => {
       console.log('✅ 服务器启动成功!');
@@ -202,7 +202,7 @@ async function startServer() {
       console.log('   - 前端应用: /*                     - Vue SPA应用');
       console.log('   - 静态资源: /assets/*               - CSS/JS/图片等');
       console.log('');
-      
+
       if (config.nodeEnv === 'development') {
         console.log('📋 开发环境说明:');
         console.log('   1. 前端应用现在通过后端服务提供（或运行在 http://localhost:5173）');
@@ -212,7 +212,7 @@ async function startServer() {
         console.log('');
       }
     });
-    
+
   } catch (error) {
     console.error('❌ 服务器启动失败:', error);
     process.exit(1);
