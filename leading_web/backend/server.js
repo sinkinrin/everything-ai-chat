@@ -134,7 +134,7 @@ async function startServer() {
     app.use('/api/downloads', createDownloadRoutes(db));
 
     // 静态文件服务 - 提供前端构建文件
-    const frontendDistPath = path.join(__dirname, '../dist');
+    const frontendDistPath = path.join(__dirname, './dist');
     app.use(express.static(frontendDistPath, {
       maxAge: '1h', // 静态资源缓存1小时
       etag: true,
