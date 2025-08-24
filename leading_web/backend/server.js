@@ -8,6 +8,7 @@ const morgan = require('morgan');
 const session = require('express-session');
 const passport = require('passport');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const Database = require('./database');
 // 尝试加载实际配置文件，如果不存在则使用示例配置
@@ -132,6 +133,34 @@ async function startServer() {
     app.use('/api/votes', createVoteRoutes(db));
     app.use('/api/downloads', createDownloadRoutes(db));
     
+    // 静态文件服务 - 提供前端构建文件
+    const frontendDistPath = path.join(__dirname, '../frontend/dist');
+    app.use(express.static(frontendDistPath, {
+      maxAge: '1h', // 静态资源缓存1小时
+      etag: true,
+      lastModified: true
+    }));
+    
+    // SPA 回退路由 - 对于所有非API路由，返回index.html
+    app.get('*', (req, res, next) => {
+      // 如果是API路由，交给下一个处理器（最终会到404）
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      
+      // 对于前端路由，返回index.html
+      const indexPath = path.join(frontendDistPath, 'index.html');
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('无法发送index.html:', err);
+          res.status(404).json({
+            error: '页面不存在',
+            path: req.originalUrl
+          });
+        }
+      });
+    });
+    
     // 错误处理中间件（必须在所有路由之后）
     app.use((err, req, res, next) => {
       console.error('服务器错误:', err);
@@ -145,10 +174,10 @@ async function startServer() {
       });
     });
 
-    // 404处理（必须在所有路由之后）
-    app.use('*', (req, res) => {
+    // API 404处理（只处理API路由，必须在所有路由之后）
+    app.use('/api/*', (req, res) => {
       res.status(404).json({
-        error: '端点不存在',
+        error: 'API端点不存在',
         path: req.originalUrl
       });
     });
@@ -169,12 +198,17 @@ async function startServer() {
       console.log('   - GET  /api/downloads/latest       - 获取最新版本');
       console.log('   - GET  /api/downloads/versions     - 获取版本列表');
       console.log('');
+      console.log('📁 静态文件服务:');
+      console.log('   - 前端应用: /*                     - Vue SPA应用');
+      console.log('   - 静态资源: /assets/*               - CSS/JS/图片等');
+      console.log('');
       
       if (config.nodeEnv === 'development') {
         console.log('📋 开发环境说明:');
-        console.log('   1. 请确保前端项目运行在 http://localhost:5173');
+        console.log('   1. 前端应用现在通过后端服务提供（或运行在 http://localhost:5173）');
         console.log('   2. 在 GitHub 应用中设置回调URL: http://localhost:3001/auth/github/callback');
         console.log('   3. 创建 config.js 文件并配置 GitHub OAuth 信息');
+        console.log('   4. 构建前端：cd ../frontend && npm run build');
         console.log('');
       }
     });

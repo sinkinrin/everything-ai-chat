@@ -23,7 +23,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
+    minify: 'esbuild', // 使用更快的 esbuild minifier
     rollupOptions: {
       output: {
         manualChunks: {

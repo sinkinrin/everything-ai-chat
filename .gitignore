@@ -2,3 +2,4 @@
 .idea
 dist-vue
 release
+leading_web/backend/config.js

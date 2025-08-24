@@ -1,5 +1,5 @@
 const Database = require('../database');
-const config = require('../config.example');
+const config = require('../config');
 
 async function migrate() {
   const db = new Database(config.database.filename);

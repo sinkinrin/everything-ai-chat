@@ -36,6 +36,8 @@ function createVoteRoutes(db) {
         [userId, feedback_id]
       );
 
+      let responseData = {};
+
       if (existingVote) {
         if (existingVote.vote_type === vote_type) {
           // 取消投票
@@ -44,10 +46,10 @@ function createVoteRoutes(db) {
             [userId, feedback_id]
           );
           
-          res.json({
+          responseData = {
             action: 'cancelled',
             message: '投票已取消'
-          });
+          };
         } else {
           // 更新投票
           await db.run(
@@ -55,11 +57,11 @@ function createVoteRoutes(db) {
             [vote_type, userId, feedback_id]
           );
           
-          res.json({
+          responseData = {
             action: 'updated',
             vote_type,
             message: '投票已更新'
-          });
+          };
         }
       } else {
         // 新增投票
@@ -68,22 +70,32 @@ function createVoteRoutes(db) {
           [userId, feedback_id, vote_type]
         );
         
-        res.json({
+        responseData = {
           action: 'created',
           vote_type,
           message: '投票成功'
-        });
+        };
       }
 
       // 获取更新后的投票数
-      const updatedFeedback = await db.get(
-        'SELECT votes_count FROM feedbacks WHERE id = ?',
+      const upVotes = await db.get(
+        'SELECT COUNT(*) as count FROM votes WHERE feedback_id = ? AND vote_type = "up"',
         [feedback_id]
       );
 
+      const downVotes = await db.get(
+        'SELECT COUNT(*) as count FROM votes WHERE feedback_id = ? AND vote_type = "down"',
+        [feedback_id]
+      );
+
+      // 发送完整的响应数据
       res.json({
-        ...res.json(),
-        votes_count: updatedFeedback.votes_count
+        ...responseData,
+        vote_details: {
+          up_votes: upVotes.count,
+          down_votes: downVotes.count,
+          total_score: upVotes.count - downVotes.count
+        }
       });
 
     } catch (error) {

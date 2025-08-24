@@ -126,3 +126,15 @@ BEGIN
         SELECT COUNT(*) FROM votes WHERE feedback_id = OLD.feedback_id AND vote_type = 'down'
     ) WHERE id = OLD.feedback_id;
 END;
+
+DROP TRIGGER IF EXISTS update_feedback_votes_count_update;
+CREATE TRIGGER update_feedback_votes_count_update
+    AFTER UPDATE ON votes
+    FOR EACH ROW
+BEGIN
+    UPDATE feedbacks SET votes_count = (
+        SELECT COUNT(*) FROM votes WHERE feedback_id = NEW.feedback_id AND vote_type = 'up'
+    ) - (
+        SELECT COUNT(*) FROM votes WHERE feedback_id = NEW.feedback_id AND vote_type = 'down'
+    ) WHERE id = NEW.feedback_id;
+END;
