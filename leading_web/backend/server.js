@@ -10,7 +10,14 @@ const passport = require('passport');
 const rateLimit = require('express-rate-limit');
 
 const Database = require('./database');
-const config = require('./config.example');
+// 尝试加载实际配置文件，如果不存在则使用示例配置
+let config;
+try {
+  config = require('./config');
+} catch (error) {
+  console.log('⚠️  未找到 config.js，使用示例配置。请复制 config.example.js 到 config.js 并配置相关参数。');
+  config = require('./config.example');
+}
 
 // 路由导入
 const { router: authRouter, configurePassport } = require('./routes/auth');
@@ -106,27 +113,6 @@ app.get('/health', (req, res) => {
 // API路由
 app.use('/api/auth', authRouter);
 
-// 错误处理中间件
-app.use((err, req, res, next) => {
-  console.error('服务器错误:', err);
-  
-  // 不要在生产环境泄露错误详情
-  const isDevelopment = config.nodeEnv === 'development';
-  
-  res.status(err.status || 500).json({
-    error: err.message || '内部服务器错误',
-    ...(isDevelopment && { stack: err.stack })
-  });
-});
-
-// 404处理
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: '端点不存在',
-    path: req.originalUrl
-  });
-});
-
 // 初始化数据库并启动服务器
 async function startServer() {
   try {
@@ -145,6 +131,27 @@ async function startServer() {
     app.use('/api/feedback', createFeedbackRoutes(db));
     app.use('/api/votes', createVoteRoutes(db));
     app.use('/api/downloads', createDownloadRoutes(db));
+    
+    // 错误处理中间件（必须在所有路由之后）
+    app.use((err, req, res, next) => {
+      console.error('服务器错误:', err);
+      
+      // 不要在生产环境泄露错误详情
+      const isDevelopment = config.nodeEnv === 'development';
+      
+      res.status(err.status || 500).json({
+        error: err.message || '内部服务器错误',
+        ...(isDevelopment && { stack: err.stack })
+      });
+    });
+
+    // 404处理（必须在所有路由之后）
+    app.use('*', (req, res) => {
+      res.status(404).json({
+        error: '端点不存在',
+        path: req.originalUrl
+      });
+    });
     
     // 启动服务器
     app.listen(PORT, () => {

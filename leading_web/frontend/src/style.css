@@ -4,10 +4,6 @@
 
 /* 自定义样式 */
 @layer base {
-  * {
-    @apply border-border;
-  }
-  
   html {
     scroll-behavior: smooth;
   }

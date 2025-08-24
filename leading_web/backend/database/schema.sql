@@ -28,11 +28,11 @@ CREATE TABLE IF NOT EXISTS feedbacks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
-    type ENUM('bug', 'feature') NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('bug', 'feature')),
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status ENUM('pending', 'in_progress', 'completed', 'rejected') DEFAULT 'pending',
-    priority ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'rejected')),
+    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'critical')),
     votes_count INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     feedback_id INTEGER NOT NULL,
-    vote_type ENUM('up', 'down') NOT NULL DEFAULT 'up',
+    vote_type TEXT NOT NULL DEFAULT 'up' CHECK (vote_type IN ('up', 'down')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, feedback_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -70,8 +70,8 @@ CREATE TABLE IF NOT EXISTS comments (
 CREATE TABLE IF NOT EXISTS software_versions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     version VARCHAR(50) NOT NULL UNIQUE,
-    platform ENUM('windows', 'mac', 'linux') NOT NULL,
-    architecture ENUM('x64', 'x86', 'arm64') NOT NULL,
+    platform TEXT NOT NULL CHECK (platform IN ('windows', 'mac', 'linux')),
+    architecture TEXT NOT NULL CHECK (architecture IN ('x64', 'x86', 'arm64')),
     download_url VARCHAR(500) NOT NULL,
     file_size BIGINT,
     sha256 VARCHAR(64),
@@ -93,16 +93,17 @@ CREATE TABLE IF NOT EXISTS download_stats (
 );
 
 -- 索引
-CREATE INDEX idx_feedbacks_type ON feedbacks(type);
-CREATE INDEX idx_feedbacks_status ON feedbacks(status);
-CREATE INDEX idx_feedbacks_votes ON feedbacks(votes_count);
-CREATE INDEX idx_feedbacks_created ON feedbacks(created_at);
-CREATE INDEX idx_votes_feedback ON votes(feedback_id);
-CREATE INDEX idx_comments_feedback ON comments(feedback_id);
-CREATE INDEX idx_software_versions_platform ON software_versions(platform);
-CREATE INDEX idx_download_stats_version ON download_stats(version_id);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_type ON feedbacks(type);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_status ON feedbacks(status);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_votes ON feedbacks(votes_count);
+CREATE INDEX IF NOT EXISTS idx_feedbacks_created ON feedbacks(created_at);
+CREATE INDEX IF NOT EXISTS idx_votes_feedback ON votes(feedback_id);
+CREATE INDEX IF NOT EXISTS idx_comments_feedback ON comments(feedback_id);
+CREATE INDEX IF NOT EXISTS idx_software_versions_platform ON software_versions(platform);
+CREATE INDEX IF NOT EXISTS idx_download_stats_version ON download_stats(version_id);
 
 -- 触发器：更新反馈的投票数
+DROP TRIGGER IF EXISTS update_feedback_votes_count;
 CREATE TRIGGER update_feedback_votes_count
     AFTER INSERT ON votes
     FOR EACH ROW
@@ -114,6 +115,7 @@ BEGIN
     ) WHERE id = NEW.feedback_id;
 END;
 
+DROP TRIGGER IF EXISTS update_feedback_votes_count_delete;
 CREATE TRIGGER update_feedback_votes_count_delete
     AFTER DELETE ON votes
     FOR EACH ROW
