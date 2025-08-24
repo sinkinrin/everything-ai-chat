@@ -50,6 +50,7 @@
       "output": "release",
       "buildResources": "assets"
     },
+    "icon": "src/asserts/logo.png",
     "files": [
       "src/main/**/*",
       "dist-vue/**/*",

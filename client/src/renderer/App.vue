@@ -5,7 +5,7 @@
     <div class="custom-titlebar">
       <!-- 标题栏左侧部分：图标、标题和状态 -->
       <div class="titlebar-left">
-        <div class="app-icon">🔍</div>
+        <img src="@/asserts/logo.png" alt="Everything AI Chat Logo" class="app-icon" />
         <div class="app-title">Everything AI Chat</div>
         <!-- Everything服务的连接状态指示器 -->
         <div class="everything-status">
