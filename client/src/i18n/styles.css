@@ -1,0 +1,320 @@
+/* RTL 语言支持样式 */
+
+/* RTL 布局基础 */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="rtl"] .app-container {
+  direction: rtl;
+}
+
+/* RTL 标题栏 */
+[dir="rtl"] .titlebar-left {
+  order: 2;
+}
+
+[dir="rtl"] .window-controls {
+  order: 1;
+}
+
+/* RTL 搜索区域 */
+[dir="rtl"] .search-input-wrapper {
+  direction: rtl;
+}
+
+[dir="rtl"] .search-input {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir="rtl"] .search-button {
+  border-radius: 8px 0 0 8px;
+}
+
+/* RTL 文件列表 */
+[dir="rtl"] .file-list-header,
+[dir="rtl"] .file-row {
+  direction: rtl;
+}
+
+[dir="rtl"] .file-cell {
+  text-align: right;
+}
+
+[dir="rtl"] .file-name {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .file-path {
+  direction: rtl;
+  text-align: right;
+}
+
+/* RTL 状态栏 */
+[dir="rtl"] .status-bar {
+  direction: rtl;
+}
+
+[dir="rtl"] .status-left {
+  order: 2;
+}
+
+[dir="rtl"] .status-right {
+  order: 1;
+}
+
+/* RTL 配置对话框 */
+[dir="rtl"] .config-dialog {
+  direction: rtl;
+}
+
+[dir="rtl"] .config-header {
+  direction: rtl;
+}
+
+[dir="rtl"] .config-content {
+  direction: rtl;
+}
+
+[dir="rtl"] .form-group {
+  text-align: right;
+}
+
+[dir="rtl"] .form-input,
+[dir="rtl"] .form-select,
+[dir="rtl"] .form-textarea {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir="rtl"] .checkbox-label {
+  direction: rtl;
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .checkbox-label input[type="checkbox"] {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+[dir="rtl"] .radio-label {
+  direction: rtl;
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .radio-label input[type="radio"] {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+/* RTL 按钮 */
+[dir="rtl"] .config-footer {
+  direction: rtl;
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .action-buttons {
+  direction: rtl;
+}
+
+/* RTL 调试面板 */
+[dir="rtl"] .debug-section {
+  direction: rtl;
+}
+
+[dir="rtl"] .debug-header {
+  direction: rtl;
+}
+
+[dir="rtl"] .debug-content {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .debug-message-content {
+  text-align: right;
+  direction: rtl;
+}
+
+/* RTL 滚动条 */
+[dir="rtl"] ::-webkit-scrollbar {
+  left: 0;
+  right: auto;
+}
+
+/* RTL 图标和按钮对齐 */
+[dir="rtl"] .search-title {
+  direction: rtl;
+}
+
+[dir="rtl"] .file-icon {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+[dir="rtl"] .button-icon {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+/* RTL 弹出框和下拉菜单 */
+[dir="rtl"] .search-history {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .model-dropdown {
+  direction: rtl;
+  text-align: right;
+}
+
+/* RTL 表单帮助文本 */
+[dir="rtl"] .form-help {
+  text-align: right;
+  direction: rtl;
+}
+
+/* RTL 状态点 */
+[dir="rtl"] .everything-status {
+  direction: rtl;
+}
+
+[dir="rtl"] .status-dot {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+/* RTL 空状态 */
+[dir="rtl"] .empty-state,
+[dir="rtl"] .error-state,
+[dir="rtl"] .loading-state,
+[dir="rtl"] .success-state {
+  direction: rtl;
+  text-align: center; /* 保持居中对齐 */
+}
+
+/* RTL 建议项目 */
+[dir="rtl"] .search-suggestions {
+  direction: rtl;
+}
+
+[dir="rtl"] .suggestion-items {
+  direction: rtl;
+  justify-content: center; /* 保持居中对齐 */
+}
+
+/* RTL 信息框 */
+[dir="rtl"] .info-box {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .info-box ul,
+[dir="rtl"] .info-box ol {
+  text-align: right;
+  padding-right: 20px;
+  padding-left: 0;
+}
+
+/* RTL 警告信息 */
+[dir="rtl"] .unsaved-warning {
+  direction: rtl;
+}
+
+[dir="rtl"] .warning-content {
+  direction: rtl;
+  justify-content: flex-end;
+}
+
+/* RTL 凭据部分 */
+[dir="rtl"] .credential-item {
+  direction: rtl;
+}
+
+[dir="rtl"] .credential-label {
+  text-align: right;
+}
+
+[dir="rtl"] .credential-value {
+  direction: rtl;
+  text-align: right;
+}
+
+/* RTL 端口建议 */
+[dir="rtl"] .port-suggestions {
+  direction: rtl;
+}
+
+[dir="rtl"] .port-chips {
+  direction: rtl;
+}
+
+/* RTL 进度列表 */
+[dir="rtl"] .progress-list {
+  direction: rtl;
+}
+
+[dir="rtl"] .progress-item {
+  direction: rtl;
+}
+
+[dir="rtl"] .progress-text {
+  text-align: right;
+}
+
+/* 修正一些具体的阿拉伯语字体问题 */
+[dir="rtl"][lang="ar-SA"],
+[dir="rtl"][lang="ar"] {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 'Arabic UI Text', Arial, sans-serif;
+}
+
+[dir="rtl"][lang="ar-SA"] .form-input,
+[dir="rtl"][lang="ar"] .form-input,
+[dir="rtl"][lang="ar-SA"] .form-textarea,
+[dir="rtl"][lang="ar"] .form-textarea {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 'Arabic UI Text', Arial, sans-serif;
+  line-height: 1.6;
+}
+
+/* RTL 过渡和动画保持自然方向 */
+[dir="rtl"] .slide-enter-active,
+[dir="rtl"] .slide-leave-active {
+  transform-origin: right center;
+}
+
+/* RTL 文件扩展名和类型显示 */
+[dir="rtl"] .file-type,
+[dir="rtl"] .file-size {
+  direction: ltr; /* 数字和文件扩展名保持LTR */
+  display: inline-block;
+}
+
+/* RTL 版本信息 */
+[dir="rtl"] .status-text {
+  direction: rtl;
+}
+
+/* RTL 时间戳 */
+[dir="rtl"] .debug-timestamp,
+[dir="rtl"] .file-modified,
+[dir="rtl"] .file-created,
+[dir="rtl"] .file-accessed {
+  direction: ltr; /* 时间戳保持LTR以确保可读性 */
+  display: inline-block;
+}
+
+/* RTL 代码块 */
+[dir="rtl"] code,
+[dir="rtl"] .everything-query code {
+  direction: ltr; /* 代码和查询语句保持LTR */
+  display: inline-block;
+  text-align: left;
+}
+
+/* RTL URL 输入框 */
+[dir="rtl"] input[type="url"] {
+  direction: ltr; /* URL保持LTR */
+  text-align: left;
+}

@@ -6,7 +6,7 @@
       <!-- 标题栏左侧部分：图标、标题和状态 -->
       <div class="titlebar-left">
         <img src="@/asserts/logo.png" alt="Everything AI Chat Logo" class="app-icon" />
-        <div class="app-title">Everything AI Chat</div>
+        <div class="app-title">{{ $t('app.title') }}</div>
         <!-- Everything服务的连接状态指示器 -->
         <div class="everything-status">
           <!-- 状态点，根据连接状态改变颜色 -->
@@ -17,14 +17,14 @@
       </div>
       <!-- 窗口控制按钮：最小化、最大化、关闭 -->
       <div class="window-controls">
-        <button @click="minimizeWindow" class="control-button minimize" title="最小化">
+        <button @click="minimizeWindow" class="control-button minimize" :title="$t('window.minimize')">
           <span>−</span>
         </button>
-        <button @click="toggleMaximize" class="control-button maximize" :title="isMaximized ? '还原' : '最大化'">
+        <button @click="toggleMaximize" class="control-button maximize" :title="isMaximized ? $t('window.restore') : $t('window.maximize')">
           <!-- 根据窗口是否最大化显示不同图标 -->
           <span>{{ isMaximized ? '⧉' : '□' }}</span>
         </button>
-        <button @click="closeWindow" class="control-button close" title="关闭">
+        <button @click="closeWindow" class="control-button close" :title="$t('window.close')">
           <span>×</span>
         </button>
       </div>
@@ -34,17 +34,17 @@
     <div class="search-section">
       <div class="search-container">
         <div class="search-row">
-          <div class="search-title">🔍 智能文件搜索</div>
+          <div class="search-title">{{ $t('search.title') }}</div>
           <div class="search-input-wrapper">
             <!-- 搜索输入框 -->
             <input v-model="searchQuery" @keydown.enter="performSearch" @keydown.down.prevent="navigateHistory(1)"
               @keydown.up.prevent="navigateHistory(-1)" @focus="showHistory = true" @blur="hideHistoryDelayed"
-              class="search-input" placeholder="输入自然语言查询，AI将转换为Everything语法..." :disabled="isSearching"
+              class="search-input" :placeholder="$t('search.placeholder')" :disabled="isSearching"
               ref="searchInput" />
             <!-- 搜索按钮 -->
             <button @click="performSearch" :disabled="isSearching || !searchQuery.trim()" class="search-button"
               :class="{ 'searching': isSearching }">
-              {{ isSearching ? '搜索中...' : '搜索' }}
+              {{ isSearching ? $t('search.searching') : $t('search.button') }}
             </button>
 
             <!-- 搜索历史下拉列表 -->
@@ -118,23 +118,23 @@
           <div class="results-info">
             <!-- 显示找到的文件数量 -->
             <div class="results-count">
-              找到 {{ searchResults.length.toLocaleString() }} 个文件
+              {{ $t('search.found', { count: searchResults.length.toLocaleString() }) }}
             </div>
             <!-- 如果AI转换了查询，则显示实际使用的Everything查询语句 -->
             <div v-if="lastEverythingQuery && lastEverythingQuery !== lastSearchQuery" class="everything-query">
-              使用查询: <code>{{ lastEverythingQuery }}</code>
+              {{ $t('search.query', { query: lastEverythingQuery }) }}: <code>{{ lastEverythingQuery }}</code>
             </div>
           </div>
           <div class="results-actions">
             <!-- 导出结果按钮 -->
             <button @click="exportResults" class="action-button">
               <span class="button-icon">📤</span>
-              导出结果
+              {{ $t('search.export') }}
             </button>
             <!-- 清空结果按钮 -->
             <button @click="clearResults" class="action-button">
               <span class="button-icon">🗑️</span>
-              清空结果
+              {{ $t('search.clear') }}
             </button>
           </div>
         </div>
@@ -144,40 +144,40 @@
           <!-- 文件列表的表头，点击可进行排序 -->
           <div class="file-list-header" :class="{ dragging: isDragging }" :style="getHeaderStyle">
             <div @click="sortBy('name')" :class="['file-list-column', 'col-name', 'sortable', getSortClass('name')]" :style="getColumnStyle('name')">
-              文件名
+              {{ $t('fileList.columns.name') }}
               <div class="column-resizer" @mousedown="startColumnResize('name', $event)"></div>
             </div>
             <div @click="sortBy('path')" :class="['file-list-column', 'col-path', 'sortable', getSortClass('path')]" :style="getColumnStyle('path')">
-              路径
+              {{ $t('fileList.columns.path') }}
               <div class="column-resizer" @mousedown="startColumnResize('path', $event)"></div>
             </div>
             <div @click="sortBy('size')" :class="['file-list-column', 'col-size', 'sortable', getSortClass('size')]" :style="getColumnStyle('size')">
-              大小
+              {{ $t('fileList.columns.size') }}
               <div class="column-resizer" @mousedown="startColumnResize('size', $event)"></div>
             </div>
             <div @click="sortBy('modified')" :class="['file-list-column', 'col-modified', 'sortable', getSortClass('modified')]" :style="getColumnStyle('modified')">
-              修改时间
+              {{ $t('fileList.columns.modified') }}
               <div class="column-resizer" @mousedown="startColumnResize('modified', $event)"></div>
             </div>
             <!-- 以下列根据配置动态显示 -->
             <div v-if="displayFields.created" @click="sortBy('created')" :class="['file-list-column', 'col-created', 'sortable', getSortClass('created')]" :style="getColumnStyle('created')">
-              创建时间
+              {{ $t('fileList.columns.created') }}
               <div class="column-resizer" @mousedown="startColumnResize('created', $event)"></div>
             </div>
             <div v-if="displayFields.accessed" @click="sortBy('accessed')" :class="['file-list-column', 'col-accessed', 'sortable', getSortClass('accessed')]" :style="getColumnStyle('accessed')">
-              访问时间
+              {{ $t('fileList.columns.accessed') }}
               <div class="column-resizer" @mousedown="startColumnResize('accessed', $event)"></div>
             </div>
             <div v-if="displayFields.attributes" @click="sortBy('attributes')" :class="['file-list-column', 'col-attributes', 'sortable', getSortClass('attributes')]" :style="getColumnStyle('attributes')">
-              属性
+              {{ $t('fileList.columns.attributes') }}
               <div class="column-resizer" @mousedown="startColumnResize('attributes', $event)"></div>
             </div>
             <div v-if="displayFields.run_count" @click="sortBy('run_count')" :class="['file-list-column', 'col-run-count', 'sortable', getSortClass('run_count')]" :style="getColumnStyle('run_count')">
-              运行次数
+              {{ $t('fileList.columns.runCount') }}
               <div class="column-resizer" @mousedown="startColumnResize('run_count', $event)"></div>
             </div>
             <div @click="sortBy('extension')" :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]" :style="getColumnStyle('type')">
-              类型
+              {{ $t('fileList.columns.type') }}
             </div>
           </div>
 
@@ -226,33 +226,33 @@
           <div class="error-icon">⚠️</div>
           <div class="error-message">{{ errorMessage }}</div>
           <!-- 允许用户清除错误信息 -->
-          <button @click="clearError" class="action-button" style="margin-top: 15px;">知道了</button>
+          <button @click="clearError" class="action-button" style="margin-top: 15px;">{{ $t('messages.info.ok') }}</button>
         </div>
 
         <!-- 状态2: 如果没有错误，则检查是否正在搜索，显示加载动画 -->
         <div v-else-if="isSearching" class="loading-state">
           <div class="loading-spinner"></div>
-          <div class="loading-text">智能搜索中...</div>
+          <div class="loading-text">{{ $t('search.searching') }}</div>
         </div>
 
         <!-- 状态3: 如果搜索完成但没有结果，显示“未找到文件” -->
         <div v-else-if="hasSearched" class="empty-state">
           <div class="empty-state-icon">📁</div>
-          <div class="empty-state-text">未找到匹配的文件</div>
-          <div class="empty-state-subtext">尝试使用不同的关键词或检查Everything是否正在运行</div>
+          <div class="empty-state-text">{{ $t('search.noResults') }}</div>
+          <div class="empty-state-subtext">{{ $t('search.noResultsHint') }}</div>
         </div>
 
         <!-- 状态4: 如果以上都不是（即初始状态），显示欢迎和使用提示 -->
         <div v-else class="empty-state">
           <div class="empty-state-icon">✨🔍✨</div>
-          <div class="empty-state-text">开始您的智能搜索之旅</div>
-          <div class="empty-state-subtext">输入自然语言，AI 将为您转换为 Everything 精确搜索语法</div>
+          <div class="empty-state-text">{{ $t('search.welcome') }}</div>
+          <div class="empty-state-subtext">{{ $t('search.welcomeHint') }}</div>
           <div class="search-suggestions">
-            <div class="suggestion-title">💡 试试这些搜索：</div>
+            <div class="suggestion-title">{{ $t('search.suggestions.title') }}</div>
             <div class="suggestion-items">
-              <span class="suggestion-item" @click="trySuggestion('今天的图片')">今天的图片</span>
-              <span class="suggestion-item" @click="trySuggestion('大于10MB的视频')">大于10MB的视频</span>
-              <span class="suggestion-item" @click="trySuggestion('本周修改的文档')">本周修改的文档</span>
+              <span class="suggestion-item" @click="trySuggestion($t('search.suggestions.today_images'))">{{ $t('search.suggestions.today_images') }}</span>
+              <span class="suggestion-item" @click="trySuggestion($t('search.suggestions.large_videos'))">{{ $t('search.suggestions.large_videos') }}</span>
+              <span class="suggestion-item" @click="trySuggestion($t('search.suggestions.recent_docs'))">{{ $t('search.suggestions.recent_docs') }}</span>
             </div>
           </div>
         </div>
@@ -262,17 +262,17 @@
     <!-- 底部状态栏 -->
     <div class="status-bar">
       <div class="status-left">
-        <span class="status-text">{{ isSearching ? '搜索中...' : '就绪' }}</span>
+        <span class="status-text">{{ isSearching ? $t('status.searching') : $t('status.ready') }}</span>
         <span v-if="everythingConnected" class="status-separator">|</span>
         <!-- 此处可以硬编码版本号，或从后端动态获取 -->
         <span v-if="everythingConnected" class="status-text">Everything v1.4.1</span>
       </div>
       <div class="status-right">
         <!-- 显示上一次搜索的耗时 -->
-        <span v-if="searchDuration > 0" class="status-text">搜索耗时: {{ (searchDuration / 1000).toFixed(2) }}s
+        <span v-if="searchDuration > 0" class="status-text">{{ $t('search.duration', { duration: (searchDuration / 1000).toFixed(2) }) }}
         </span>
         <!-- 打开设置对话框的按钮 -->
-        <button @click="showConfigDialog = true" class="status-settings-button" title="设置">⚙️</button>
+        <button @click="showConfigDialog = true" class="status-settings-button" :title="$t('settings.title')">⚙️</button>
       </div>
     </div>
 
@@ -447,11 +447,7 @@ export default {
       return everythingConnected.value ? 'connected' : 'disconnected';
     });
 
-    // 计算Everything连接状态的显示文本
-    const everythingStatusText = computed(() => {
-      if (everythingTesting.value) return '连接中';
-      return everythingConnected.value ? '已连接' : '未连接';
-    });
+
 
     // --- 方法 ---
 
@@ -956,7 +952,7 @@ export default {
       // 滚动条补偿相关数据
       hasScrollbar, fileListBody,
       // 计算属性
-      filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
+      filteredHistory, sortedResults, everythingStatusClass, getHeaderStyle,
       // 方法
       performSearch, selectHistoryItem, navigateHistory, hideHistoryDelayed, sortBy, getSortClass,
       openFile, showFileContextMenu, exportResults, clearResults, trySuggestion,

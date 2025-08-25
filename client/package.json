@@ -41,6 +41,7 @@
     "ini": "^5.0.0",
     "openai": "^4.20.1",
     "vue": "^3.3.8",
+    "vue-i18n": "^9.14.5",
     "vue-router": "^4.2.5"
   },
   "build": {
@@ -67,11 +68,16 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },

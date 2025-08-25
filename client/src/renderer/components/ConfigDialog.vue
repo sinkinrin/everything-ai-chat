@@ -2,100 +2,129 @@
   <div class="config-overlay" @mousedown="handleOverlayMouseDown" @mouseup="handleOverlayMouseUp">
     <div class="config-dialog" @click.stop @mousedown.stop @mouseup.stop>
       <div class="config-header">
-        <h2>设置</h2>
+        <h2>{{ $t('settings.title') }}</h2>
         <button @click="closeDialog" class="close-button">×</button>
       </div>
 
       <div class="config-content">
+        <!-- 语言设置 -->
         <div class="config-section">
-          <h3>显示字段配置</h3>
+          <h3>{{ $t('settings.language.title') }}</h3>
           <p class="config-description">
-            选择在搜索结果中显示的字段信息
+            {{ $t('settings.language.description') }}
+          </p>
+
+          <div class="form-group">
+            <label for="languageSelect">{{ $t('settings.language.label') }}</label>
+            <select
+              id="languageSelect"
+              v-model="selectedLanguage"
+              @change="changeLanguage"
+              class="form-select"
+            >
+              <option
+                v-for="locale in supportedLocales"
+                :key="locale.code"
+                :value="locale.code"
+              >
+                {{ locale.nativeName }} ({{ locale.name }})
+              </option>
+            </select>
+            <small class="form-help">
+              {{ $t('settings.language.current', { language: getCurrentLocaleName() }) }}
+            </small>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3>{{ $t('settings.display.title') }}</h3>
+          <p class="config-description">
+            {{ $t('settings.display.description') }}
           </p>
 
           <div class="field-config-grid">
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.accessed" />
-                <span>访问时间</span>
+                <span>{{ $t('settings.display.fields.accessed') }}</span>
               </label>
             </div>
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.attributes" />
-                <span>文件属性</span>
+                <span>{{ $t('settings.display.fields.attributes') }}</span>
               </label>
             </div>
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.created" />
-                <span>创建时间</span>
+                <span>{{ $t('settings.display.fields.created') }}</span>
               </label>
             </div>
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.recently_changed" />
-                <span>最近更改</span>
+                <span>{{ $t('settings.display.fields.recentlyChanged') }}</span>
               </label>
             </div>
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.run_count" />
-                <span>运行次数</span>
+                <span>{{ $t('settings.display.fields.runCount') }}</span>
               </label>
             </div>
             <div class="field-config-item">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="config.displayFields.file_list_filename" />
-                <span>文件列表名</span>
+                <span>{{ $t('settings.display.fields.fileListFilename') }}</span>
               </label>
             </div>
           </div>
         </div>
 
         <div class="config-section">
-          <h3>OpenAI 配置</h3>
+          <h3>{{ $t('settings.openai.title') }}</h3>
           <p class="config-description">
-            配置OpenAI API以启用自然语言转Everything搜索语法功能
+            {{ $t('settings.openai.description') }}
           </p>
 
           <div class="form-group">
-            <label for="apiKey">API Key</label>
+            <label for="apiKey">{{ $t('settings.openai.apiKey.label') }}</label>
             <input
               id="apiKey"
               v-model="config.apiKey"
               type="password"
-              placeholder="sk-..."
+              :placeholder="$t('settings.openai.apiKey.placeholder')"
               class="form-input"
             />
             <small class="form-help">
-              您的OpenAI API Key，用于调用GPT模型进行搜索语法转换
+              {{ $t('settings.openai.apiKey.help') }}
             </small>
           </div>
 
           <div class="form-group">
-            <label for="baseURL">Base URL (可选)</label>
+            <label for="baseURL">{{ $t('settings.openai.baseUrl.label') }}</label>
             <input
               id="baseURL"
               v-model="config.baseURL"
               type="url"
-              placeholder="https://api.openai.com/v1"
+              :placeholder="$t('settings.openai.baseUrl.placeholder')"
               class="form-input"
             />
             <small class="form-help">
-              自定义API端点，支持兼容的第三方服务
+              {{ $t('settings.openai.baseUrl.help') }}
             </small>
           </div>
 
           <div class="form-group">
-            <label for="model">模型</label>
+            <label for="model">{{ $t('settings.openai.model.label') }}</label>
             <div class="model-input-container">
               <input
                 id="model"
                 v-model="config.model"
                 type="text"
                 class="form-input model-input"
-                placeholder="输入或选择模型"
+                :placeholder="$t('settings.openai.model.placeholder')"
                 @focus="showModelHistory = true"
                 @blur="hideModelHistoryDelayed"
                 @input="filterModelHistory"
@@ -112,7 +141,7 @@
               </div>
             </div>
             <small class="form-help">
-              输入自定义模型名称或从历史记录中选择
+              {{ $t('settings.openai.model.help') }}
             </small>
           </div>
         </div>
@@ -185,7 +214,7 @@
             <div class="status-indicator" :class="{ active: everythingStatus }"></div>
             <span>Everything 状态: {{ everythingStatus ? '已连接' : '未连接' }}</span>
             <button @click="testEverything" :disabled="isTesting" class="test-button">
-              {{ isTesting ? '测试中...' : '测试连接' }}
+              {{ isTesting ? $t('settings.everything.testing') : $t('settings.everything.test') }}
             </button>
           </div>
 
@@ -425,9 +454,9 @@
       </div>
 
       <div class="config-footer">
-        <button @click="closeDialog" class="cancel-button">取消</button>
+        <button @click="closeDialog" class="cancel-button">{{ $t('settings.cancel') }}</button>
         <button @click="saveConfig" :disabled="isSaving" :class="['save-button', { 'has-changes': hasUnsavedChanges }]">
-          {{ isSaving ? '保存中...' : hasUnsavedChanges ? '保存*' : '保存' }}
+          {{ isSaving ? $t('settings.saving') : hasUnsavedChanges ? $t('settings.save') + '*' : $t('settings.save') }}
         </button>
       </div>
     </div>
@@ -436,11 +465,18 @@
 
 <script>
 import { ref, reactive, onMounted, toRaw, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { getCurrentLocale, setLocale, getSupportedLocales } from '../../i18n';
 
 export default {
   name: 'ConfigDialog',
   emits: ['close'],
   setup(props, { emit }) {
+    const { t } = useI18n();
+    
+    // 语言相关状态
+    const selectedLanguage = ref(getCurrentLocale());
+    const supportedLocales = ref(getSupportedLocales());
     const config = reactive({
       apiKey: '',
       baseURL: 'https://api.openai.com/v1',
@@ -868,6 +904,20 @@ Everything搜索语法规则：
       });
     };
 
+    // 语言相关方法
+    const changeLanguage = () => {
+      if (setLocale(selectedLanguage.value)) {
+        console.log('语言已切换到:', selectedLanguage.value);
+      }
+    };
+
+    const getCurrentLocaleName = () => {
+      const currentLocale = supportedLocales.value.find(
+        locale => locale.code === getCurrentLocale()
+      );
+      return currentLocale ? currentLocale.nativeName : getCurrentLocale();
+    };
+
     onMounted(() => {
       loadConfig();
       loadEverythingConfig();
@@ -916,6 +966,10 @@ Everything搜索语法规则：
       hasUnsavedChanges,
       showUnsavedWarning,
       
+      // 语言相关
+      selectedLanguage,
+      supportedLocales,
+      
       // 方法
       saveConfig,
       testEverything,
@@ -934,7 +988,10 @@ Everything搜索语法规则：
       resetToDefaultPrompt,
       getCurrentPrompt,
       saveAndClose,
-      discardAndClose
+      discardAndClose,
+      // 语言相关方法
+      changeLanguage,
+      getCurrentLocaleName
     };
   }
 };
