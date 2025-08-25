@@ -1,4 +1,4 @@
-# Everything AI Chat - 智能文件搜索客户端
+# Everything AI Chat - 智能文件搜索客户端（支持10种语言）
 
 [**English**](./README-en.md) | 中文
 
