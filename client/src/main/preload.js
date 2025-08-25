@@ -35,5 +35,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setEverythingPath: (userPath) => ipcRenderer.invoke('set-everything-path', userPath),
   
   // 获取Everything配置
-  getEverythingConfig: () => ipcRenderer.invoke('get-everything-config')
+  getEverythingConfig: () => ipcRenderer.invoke('get-everything-config'),
+  
+  // 监听来自主进程的消息
+  on: (channel, func) => {
+    const validChannels = ['open-settings'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, func);
+    }
+  },
+  
+  // 移除事件监听
+  removeAllListeners: (channel) => {
+    ipcRenderer.removeAllListeners(channel);
+  }
 }); 

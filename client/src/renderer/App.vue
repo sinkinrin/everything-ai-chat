@@ -573,6 +573,13 @@ export default {
       checkEverythingStatus();
       // 定期检查Everything连接状态
       setInterval(checkEverythingStatus, 30000); // 每30秒检查一次
+      
+      // 监听来自主进程的打开设置消息
+      if (window.electronAPI?.on) {
+        window.electronAPI.on('open-settings', () => {
+          showConfigDialog.value = true;
+        });
+      }
     });
 
     // 返回所有需要在模板中使用的数据和方法

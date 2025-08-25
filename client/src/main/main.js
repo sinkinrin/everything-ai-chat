@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const OpenAI = require('openai');
@@ -25,6 +25,9 @@ let everythingSearch;
 // Everything管理器实例
 let everythingManager;
 
+// 托盘实例
+let tray;
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -39,6 +42,15 @@ function createWindow() {
     titleBarStyle: 'hidden',
     frame: false,
     show: false
+  });
+  
+  // 窗口关闭时隐藏到托盘而不是真正关闭
+  mainWindow.on('close', (event) => {
+    if (tray && !app.isQuiting) {
+      event.preventDefault();
+      mainWindow.hide();
+      return false;
+    }
   });
 
   // 开发环境加载Vue开发服务器，生产环境加载构建文件
@@ -63,6 +75,89 @@ function createWindow() {
   // 窗口准备好后显示
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+  
+  return mainWindow;
+}
+
+// 创建托盘
+function createTray() {
+  // 创建一个简单的托盘图标
+  const icon = nativeImage.createEmpty();
+  icon.resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  
+  // 创建托盘菜单
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示主窗口',
+      type: 'normal',
+      click: () => {
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          const mainWindow = windows[0];
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createWindow();
+        }
+      }
+    },
+    {
+      label: '设置',
+      type: 'normal',
+      click: () => {
+        // 发送消息到渲染进程打开设置页面
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          const mainWindow = windows[0];
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.show();
+          mainWindow.focus();
+          mainWindow.webContents.send('open-settings');
+        } else {
+          const mainWindow = createWindow();
+          mainWindow.once('ready-to-show', () => {
+            mainWindow.webContents.send('open-settings');
+          });
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '退出',
+      type: 'normal',
+      click: () => {
+        app.isQuiting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  // 设置托盘菜单
+  tray.setContextMenu(contextMenu);
+  
+  // 设置托盘提示
+  tray.setToolTip('Everything AI Chat');
+  
+  // 托盘图标双击事件
+  tray.on('double-click', () => {
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length > 0) {
+      const mainWindow = windows[0];
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    } else {
+      createWindow();
+    }
   });
 }
 
@@ -968,6 +1063,7 @@ app.whenReady().then(() => {
   initOpenAI();
   initEverythingSearch();
   initEverythingManager();
+  createTray();
   createWindow();
 
   app.on('activate', () => {
@@ -978,7 +1074,8 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // 如果有托盘，不退出应用，保持在后台运行
+  if (process.platform !== 'darwin' && !tray) {
     app.quit();
   }
 });

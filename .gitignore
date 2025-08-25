@@ -1,7 +1,7 @@
-﻿node_modules
+﻿leading_web/frontend/dist
+leading_web/frontend/node_modules
 .idea
-dist-vue
-release
-leading_web/backend/config.js
+client/node_modules
+client/release
+client/dist-vue
 leading_web/backend/.env
-leading_web/frontend/dist
