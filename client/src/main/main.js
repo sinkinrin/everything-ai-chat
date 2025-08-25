@@ -82,9 +82,38 @@ function createWindow() {
 
 // 创建托盘
 function createTray() {
-  // 创建一个简单的托盘图标
-  const icon = nativeImage.createEmpty();
-  icon.resize({ width: 16, height: 16 });
+  // 创建托盘图标，使用应用程序logo
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  let iconPath;
+  
+  if (isDev) {
+    // 开发环境：从源码目录加载图标
+    iconPath = path.join(__dirname, '../asserts/logo.png');
+  } else {
+    // 生产环境：从资源目录加载图标
+    iconPath = path.join(process.resourcesPath, 'app.asar', 'src', 'asserts', 'logo.png');
+  }
+  
+  // 创建图标，如果文件不存在则使用默认图标
+  let icon;
+  try {
+    icon = nativeImage.createFromPath(iconPath);
+    // 调整托盘图标尺寸（Windows推荐16x16）
+    if (!icon.isEmpty()) {
+      icon = icon.resize({ width: 16, height: 16 });
+    }
+  } catch (error) {
+    console.warn('无法加载托盘图标:', error.message);
+    // 使用默认图标作为后备方案
+    icon = nativeImage.createEmpty();
+    icon.addRepresentation({
+      scaleFactor: 1.0,
+      width: 16,
+      height: 16,
+      buffer: Buffer.alloc(16 * 16 * 4, 0x80) // 创建一个灰色的16x16图标
+    });
+  }
+  
   tray = new Tray(icon);
   
   // 创建托盘菜单
