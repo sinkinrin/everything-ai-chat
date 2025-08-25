@@ -141,10 +141,14 @@ export default {
       previewTitle: 'プロンプトプレビュー',
       tips: {
         title: '💡 使用のヒント',
-        guidance: '明確なガイダンス: AIに検索意図の理解方法とEverything構文への変換方法を伝える',
-        examples: '例を含める: プロンプトに変換例を含めることで精度が向上します',
-        concise: '簡潔に保つ: 複雑すぎる指示は避け、プロンプトを明確で理解しやすく保つ',
-        test: '効果をテスト: 変更後、実際の検索を通じて効果を確認できます'
+        guidanceTitle: '明確なガイダンス',
+        guidance: 'AIに検索意図の理解方法とEverything構文への変換方法を伝える',
+        examplesTitle: '例を含める',
+        examples: 'プロンプトに変換例を含めることで精度が向上します',
+        conciseTitle: '簡潔に保つ',
+        concise: '複雑すぎる指示は避け、プロンプトを明確で理解しやすく保つ',
+        testTitle: '効果をテスト',
+        test: '変更後、実際の検索を通じて効果を確認できます'
       }
     },
     

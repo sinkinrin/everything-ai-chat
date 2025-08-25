@@ -141,10 +141,14 @@ export default {
       previewTitle: '提示词预览',
       tips: {
         title: '💡 使用提示',
-        guidance: '明确指导: 告诉AI如何理解搜索意图并转换为Everything语法',
-        examples: '包含示例: 在提示词中包含一些转换示例会提高准确性',
-        concise: '保持简洁: 避免过于复杂的指令，保持提示词清晰易懂',
-        test: '测试效果: 修改后可以通过实际搜索来验证效果'
+        guidanceTitle: '明确指导',
+        guidance: '告诉AI如何理解搜索意图并转换为Everything语法',
+        examplesTitle: '包含示例',
+        examples: '在提示词中包含一些转换示例会提高准确性',
+        conciseTitle: '保持简洁',
+        concise: '避免过于复杂的指令，保持提示词清晰易懂',
+        testTitle: '测试效果',
+        test: '修改后可以通过实际搜索来验证效果'
       }
     },
     
@@ -241,7 +245,8 @@ export default {
       configSaved: '配置保存成功',
       exported: '结果导出成功',
       connected: 'Everything连接成功！',
-      pathSet: 'Everything路径设置成功'
+      pathSet: 'Everything路径设置成功',
+      autoConnectSuccess: 'Everything HTTP服务连接成功！'
     },
     
     error: {
@@ -252,14 +257,18 @@ export default {
       searchError: '搜索过程中发生错误: {error}',
       loadConfigFailed: '加载配置失败',
       invalidPort: '端口号无效',
-      pathSetFailed: 'Everything路径设置失败'
+      pathSetFailed: 'Everything路径设置失败: {error}',
+      autoConnectFailed: '连接失败: {error}',
+      autoConnectError: '连接过程中发生错误: {error}'
     },
     
     info: {
       ok: '知道了',
       loading: '加载中...',
       processing: '处理中...',
-      testing: '测试中...'
+      testing: '测试中...',
+      connecting: '连接中...',
+      setting: '设置中...'
     }
   },
   

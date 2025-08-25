@@ -141,10 +141,14 @@ export default {
       previewTitle: 'Prompt Preview',
       tips: {
         title: '💡 Usage Tips',
-        guidance: 'Clear guidance: Tell AI how to understand search intent and convert to Everything syntax',
-        examples: 'Include examples: Including some conversion examples in prompt will improve accuracy',
-        concise: 'Keep concise: Avoid overly complex instructions, keep prompt clear and understandable',
-        test: 'Test effectiveness: After modification, you can verify effectiveness through actual search'
+        guidanceTitle: 'Clear Guidance',
+        guidance: 'Tell AI how to understand search intent and convert to Everything syntax',
+        examplesTitle: 'Include Examples',
+        examples: 'Including some conversion examples in prompt will improve accuracy',
+        conciseTitle: 'Keep Concise',
+        concise: 'Avoid overly complex instructions, keep prompt clear and understandable',
+        testTitle: 'Test Effectiveness',
+        test: 'After modification, you can verify effectiveness through actual search'
       }
     },
     

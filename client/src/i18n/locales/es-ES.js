@@ -141,10 +141,14 @@ export default {
       previewTitle: 'Vista Previa del Prompt',
       tips: {
         title: '💡 Consejos de Uso',
-        guidance: 'Guía clara: Diga a la IA cómo entender la intención de búsqueda y convertir a sintaxis Everything',
-        examples: 'Incluir ejemplos: Incluir algunos ejemplos de conversión en el prompt mejorará la precisión',
-        concise: 'Mantener conciso: Evite instrucciones demasiado complejas, mantenga el prompt claro y comprensible',
-        test: 'Probar efectividad: Después de la modificación, puede verificar la efectividad a través de búsqueda real'
+        guidanceTitle: 'Guía Clara',
+        guidance: 'Diga a la IA cómo entender la intención de búsqueda y convertir a sintaxis Everything',
+        examplesTitle: 'Incluir Ejemplos',
+        examples: 'Incluir algunos ejemplos de conversión en el prompt mejorará la precisión',
+        conciseTitle: 'Mantener Conciso',
+        concise: 'Evite instrucciones demasiado complejas, mantenga el prompt claro y comprensible',
+        testTitle: 'Probar Efectividad',
+        test: 'Después de la modificación, puede verificar la efectividad a través de búsqueda real'
       }
     },
     

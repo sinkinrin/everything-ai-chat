@@ -149,7 +149,7 @@
         <!-- AI 系统提示词配置 -->
         <div class="config-section">
           <div class="section-header" @click="toggleSystemPromptSection">
-            <h3>🤖 AI 系统提示词配置</h3>
+            <h3>{{ $t('settings.systemPrompt.title') }}</h3>
             <button class="collapse-button" :class="{ 'expanded': showSystemPromptSection }" type="button">
               <span>{{ showSystemPromptSection ? '▼' : '▶' }}</span>
             </button>
@@ -157,35 +157,35 @@
           
           <div v-show="showSystemPromptSection" class="system-prompt-content">
             <p class="config-description">
-              自定义AI的系统提示词来优化搜索结果的质量和风格。系统提示词决定了AI如何理解和转换您的自然语言搜索。
+              {{ $t('settings.systemPrompt.description') }}
             </p>
 
             <div class="form-group">
-              <label for="systemPrompt">系统提示词</label>
+              <label for="systemPrompt">{{ $t('settings.systemPrompt.label') }}</label>
               <textarea
                 id="systemPrompt"
                 v-model="config.systemPrompt"
                 class="form-textarea"
-                placeholder="请输入自定义的系统提示词..."
+                :placeholder="$t('settings.systemPrompt.placeholder')"
                 rows="8"
               ></textarea>
               <small class="form-help">
-                提示词应该指导AI如何将自然语言转换为Everything搜索语法。留空将使用默认提示词。
+                {{ $t('settings.systemPrompt.help') }}
               </small>
             </div>
 
             <div class="prompt-actions">
               <button @click="resetToDefaultPrompt" class="reset-prompt-button" type="button">
-                🔄 重置为默认
+                {{ $t('settings.systemPrompt.reset') }}
               </button>
               <button @click="showPromptPreview = !showPromptPreview" class="preview-button" type="button">
-                {{ showPromptPreview ? '隐藏预览' : '预览效果' }}
+                {{ showPromptPreview ? $t('settings.systemPrompt.hidePreview') : $t('settings.systemPrompt.preview') }}
               </button>
             </div>
 
             <!-- 提示词预览区域 -->
             <div v-if="showPromptPreview" class="prompt-preview">
-              <h4>提示词预览</h4>
+              <h4>{{ $t('settings.systemPrompt.previewTitle') }}</h4>
               <div class="preview-content">
                 {{ getCurrentPrompt() }}
               </div>
@@ -193,26 +193,26 @@
 
             <!-- 使用说明 -->
             <div class="prompt-tips">
-              <h4>💡 使用提示</h4>
+              <h4>{{ $t('settings.systemPrompt.tips.title') }}</h4>
               <ul>
-                <li><strong>明确指导</strong>: 告诉AI如何理解搜索意图并转换为Everything语法</li>
-                <li><strong>包含示例</strong>: 在提示词中包含一些转换示例会提高准确性</li>
-                <li><strong>保持简洁</strong>: 避免过于复杂的指令，保持提示词清晰易懂</li>
-                <li><strong>测试效果</strong>: 修改后可以通过实际搜索来验证效果</li>
+                <li><strong>{{ $t('settings.systemPrompt.tips.guidanceTitle') }}</strong>: {{ $t('settings.systemPrompt.tips.guidance') }}</li>
+                <li><strong>{{ $t('settings.systemPrompt.tips.examplesTitle') }}</strong>: {{ $t('settings.systemPrompt.tips.examples') }}</li>
+                <li><strong>{{ $t('settings.systemPrompt.tips.conciseTitle') }}</strong>: {{ $t('settings.systemPrompt.tips.concise') }}</li>
+                <li><strong>{{ $t('settings.systemPrompt.tips.testTitle') }}</strong>: {{ $t('settings.systemPrompt.tips.test') }}</li>
               </ul>
             </div>
           </div>
         </div>
 
         <div class="config-section">
-          <h3>Everything 设置</h3>
+          <h3>{{ $t('settings.everything.title') }}</h3>
           <p class="config-description">
-            自动配置Everything HTTP服务，或手动设置连接参数
+            {{ $t('settings.everything.description') }}
           </p>
 
           <div class="status-item">
             <div class="status-indicator" :class="{ active: everythingStatus }"></div>
-            <span>Everything 状态: {{ everythingStatus ? '已连接' : '未连接' }}</span>
+            <span>{{ $t('settings.everything.status') }} {{ everythingStatus ? $t('status.connected') : $t('status.disconnected') }}</span>
             <button @click="testEverything" :disabled="isTesting" class="test-button">
               {{ isTesting ? $t('settings.everything.testing') : $t('settings.everything.test') }}
             </button>
@@ -224,9 +224,9 @@
 
           <!-- 一键连接功能 -->
           <div class="auto-connect-section">
-            <h4>🚀 一键连接Everything服务</h4>
+            <h4>{{ $t('settings.everything.autoConnect.title') }}</h4>
             <p class="section-description">
-              自动搜索Everything安装位置，配置HTTP服务并启动连接
+              {{ $t('settings.everything.autoConnect.description') }}
             </p>
             
             <div class="action-buttons">
@@ -235,7 +235,7 @@
                 :disabled="isAutoConnecting" 
                 class="auto-connect-button primary"
               >
-                {{ isAutoConnecting ? '连接中...' : '🔗 一键连接Everything服务' }}
+                {{ isAutoConnecting ? $t('messages.info.connecting') : $t('settings.everything.autoConnect.button') }}
               </button>
               
               <button 
@@ -243,23 +243,23 @@
                 class="manual-path-button secondary"
                 :disabled="isAutoConnecting"
               >
-                📁 手动设置路径
+                {{ $t('settings.everything.autoConnect.manualPath') }}
               </button>
             </div>
 
             <!-- 手动路径设置 -->
             <div v-if="showManualPath" class="manual-path-section">
               <div class="form-group">
-                <label for="everythingPath">Everything安装路径</label>
+                <label for="everythingPath">{{ $t('settings.everything.autoConnect.manualPathSection.label') }}</label>
                 <input
                   id="everythingPath"
                   v-model="manualPath"
                   type="text"
-                  placeholder="例如: C:\Program Files\Everything\Everything.exe"
+                  :placeholder="$t('settings.everything.autoConnect.manualPathSection.placeholder')"
                   class="form-input"
                 />
                 <small class="form-help">
-                  可以输入Everything.exe的完整路径，或者安装目录路径
+                  {{ $t('settings.everything.autoConnect.manualPathSection.help') }}
                 </small>
               </div>
               <button 
@@ -267,13 +267,13 @@
                 :disabled="!manualPath.trim() || isManualSetting"
                 class="set-path-button"
               >
-                {{ isManualSetting ? '设置中...' : '确认设置' }}
+                {{ isManualSetting ? $t('messages.info.setting') : $t('settings.everything.autoConnect.manualPathSection.confirm') }}
               </button>
             </div>
 
             <!-- 操作进度显示 -->
             <div v-if="autoConnectProgress.length > 0" class="progress-section">
-              <h5>连接进度:</h5>
+              <h5>{{ $t('settings.everything.autoConnect.progress') }}</h5>
               <ul class="progress-list">
                 <li 
                   v-for="(step, index) in autoConnectProgress" 
@@ -295,25 +295,25 @@
                 {{ autoConnectResult.message }}
               </div>
               <div v-if="autoConnectResult.success && autoConnectResult.port" class="result-details">
-                <p>🌐 HTTP服务端口: {{ autoConnectResult.port }}</p>
-                <p v-if="autoConnectResult.installPath">📁 安装路径: {{ autoConnectResult.installPath }}</p>
+                <p>{{ $t('settings.everything.autoConnect.result.port', { port: autoConnectResult.port }) }}</p>
+                <p v-if="autoConnectResult.installPath">{{ $t('settings.everything.autoConnect.result.installPath', { path: autoConnectResult.installPath }) }}</p>
                 <div v-if="autoConnectResult.credentials" class="credentials-section">
-                  <p class="credentials-title">🔐 访问凭据（请妥善保存）:</p>
+                  <p class="credentials-title">{{ $t('settings.everything.autoConnect.result.credentials') }}</p>
                   <div class="credential-item">
-                    <span class="credential-label">用户名:</span>
+                    <span class="credential-label">{{ $t('settings.everything.autoConnect.result.username') }}</span>
                     <span class="credential-value">{{ autoConnectResult.credentials.username }}</span>
-                    <button @click="copyToClipboard(autoConnectResult.credentials.username)" class="copy-button" title="复制用户名">📋</button>
+                    <button @click="copyToClipboard(autoConnectResult.credentials.username)" class="copy-button" :title="$t('settings.everything.autoConnect.result.copy')">📋</button>
                   </div>
                   <div class="credential-item">
-                    <span class="credential-label">密码:</span>
+                    <span class="credential-label">{{ $t('settings.everything.autoConnect.result.password') }}</span>
                     <span class="credential-value">{{ showPassword ? autoConnectResult.credentials.password : '•'.repeat(autoConnectResult.credentials.password.length) }}</span>
-                    <button @click="togglePasswordVisibility" class="toggle-password-button" :title="showPassword ? '隐藏密码' : '显示密码'">
+                    <button @click="togglePasswordVisibility" class="toggle-password-button" :title="showPassword ? $t('settings.everything.autoConnect.result.hidePassword') : $t('settings.everything.autoConnect.result.showPassword')">
                       {{ showPassword ? '👁️' : '👁️‍🗨️' }}
                     </button>
-                    <button @click="copyToClipboard(autoConnectResult.credentials.password)" class="copy-button" title="复制密码">📋</button>
+                    <button @click="copyToClipboard(autoConnectResult.credentials.password)" class="copy-button" :title="$t('settings.everything.autoConnect.result.copy')">📋</button>
                   </div>
                   <div class="credential-note">
-                    <small>💡 这些凭据已自动保存到Everything配置文件中，下次启动Everything时会自动应用</small>
+                    <small>{{ $t('settings.everything.autoConnect.result.note') }}</small>
                   </div>
                 </div>
               </div>
@@ -322,9 +322,9 @@
 
           <!-- 端口配置部分 -->
           <div class="port-config-section">
-            <h4>🌐 端口配置</h4>
+            <h4>{{ $t('settings.everything.port.title') }}</h4>
             <p class="section-description">
-              配置Everything HTTP服务的连接端口
+              {{ $t('settings.everything.port.description') }}
             </p>
             
             <div class="port-config-options">
@@ -336,10 +336,10 @@
                     value="auto" 
                     name="portMode"
                   />
-                  <span>自动选择端口（推荐）</span>
+                  <span>{{ $t('settings.everything.port.auto') }}</span>
                 </label>
                 <div class="radio-description">
-                  系统会自动查找可用的端口，优先使用常用端口如8080、8888等
+                  {{ $t('settings.everything.port.autoDescription') }}
                 </div>
               </div>
               
@@ -351,37 +351,37 @@
                     value="fixed" 
                     name="portMode"
                   />
-                  <span>固定端口</span>
+                  <span>{{ $t('settings.everything.port.fixed') }}</span>
                 </label>
                 <div class="radio-description">
-                  使用指定的固定端口，如果端口被占用则连接失败
+                  {{ $t('settings.everything.port.fixedDescription') }}
                 </div>
                 
                 <div v-if="portConfigMode === 'fixed'" class="fixed-port-input">
                   <div class="form-group">
-                    <label for="fixedPort">端口号</label>
+                    <label for="fixedPort">{{ $t('settings.everything.port.portLabel') }}</label>
                     <input
                       id="fixedPort"
                       v-model.number="fixedPort"
                       type="number"
                       min="1"
                       max="65535"
-                      placeholder="8080"
+                      :placeholder="$t('settings.everything.port.portPlaceholder')"
                       class="form-input port-input"
                       :class="{ 'error': !isValidPort(fixedPort) }"
                     />
                     <small class="form-help" :class="{ 'error-text': !isValidPort(fixedPort) }">
                       <span v-if="isValidPort(fixedPort)">
-                        端口范围：1-65535，建议使用8080、8888、9080等
+                        {{ $t('settings.everything.port.portHelp') }}
                       </span>
                       <span v-else>
-                        请输入有效的端口号（1-65535）
+                        {{ $t('settings.everything.port.portError') }}
                       </span>
                     </small>
                   </div>
                   
                   <div class="port-suggestions">
-                    <span class="suggestion-label">常用端口：</span>
+                    <span class="suggestion-label">{{ $t('settings.everything.port.suggestions') }}</span>
                     <div class="port-chips">
                       <button 
                         v-for="suggestedPort in suggestedPorts" 
@@ -402,42 +402,42 @@
 
           <!-- 当前配置信息 -->
           <div class="current-config">
-            <h4>当前配置</h4>
+            <h4>{{ $t('settings.everything.currentConfig.title') }}</h4>
             <div class="config-info">
               <div class="config-item">
-                <span class="config-label">端口模式:</span>
-                <span class="config-value">{{ portConfigMode === 'auto' ? '自动选择' : '固定端口' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.portMode') }}</span>
+                <span class="config-value">{{ portConfigMode === 'auto' ? $t('settings.everything.currentConfig.autoMode') : $t('settings.everything.currentConfig.fixedMode') }}</span>
               </div>
               <div class="config-item">
-                <span class="config-label">HTTP端口:</span>
-                <span class="config-value">{{ everythingConfig.port || '未设置' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.httpPort') }}</span>
+                <span class="config-value">{{ everythingConfig.port || $t('settings.everything.currentConfig.notSet') }}</span>
               </div>
               <div v-if="portConfigMode === 'fixed'" class="config-item">
-                <span class="config-label">配置端口:</span>
-                <span class="config-value">{{ fixedPort || '未设置' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.configPort') }}</span>
+                <span class="config-value">{{ fixedPort || $t('settings.everything.currentConfig.notSet') }}</span>
               </div>
               <div class="config-item">
-                <span class="config-label">安装路径:</span>
-                <span class="config-value">{{ everythingConfig.installPath || '未设置' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.installPath') }}</span>
+                <span class="config-value">{{ everythingConfig.installPath || $t('settings.everything.currentConfig.notSet') }}</span>
               </div>
               <div class="config-item">
-                <span class="config-label">认证状态:</span>
-                <span class="config-value">{{ everythingConfig.hasCredentials ? '✅ 已启用' : '❌ 未启用' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.authStatus') }}</span>
+                <span class="config-value">{{ everythingConfig.hasCredentials ? $t('settings.everything.currentConfig.enabled') : $t('settings.everything.currentConfig.disabled') }}</span>
               </div>
               <div v-if="everythingConfig.hasCredentials" class="config-item">
-                <span class="config-label">登录用户:</span>
-                <span class="config-value">{{ everythingConfig.username || '未设置' }}</span>
+                <span class="config-label">{{ $t('settings.everything.currentConfig.loginUser') }}</span>
+                <span class="config-value">{{ everythingConfig.username || $t('settings.everything.currentConfig.notSet') }}</span>
               </div>
             </div>
           </div>
 
           <div class="info-box">
-            <h4>说明:</h4>
+            <h4>{{ $t('settings.everything.info.title') }}</h4>
             <ul>
-              <li><strong>一键连接</strong>: 自动搜索Everything安装位置，配置HTTP服务，无需手动操作</li>
-              <li><strong>自动处理</strong>: 会自动关闭现有Everything进程，修改配置文件，重启服务</li>
-              <li><strong>端口选择</strong>: 自动选择未被占用的端口（优先8080、8888等）</li>
-              <li><strong>兼容性</strong>: 支持Everything 1.4及以上版本</li>
+              <li><strong>{{ $t('settings.everything.info.autoConnect') }}</strong></li>
+              <li><strong>{{ $t('settings.everything.info.autoHandle') }}</strong></li>
+              <li><strong>{{ $t('settings.everything.info.portSelection') }}</strong></li>
+              <li><strong>{{ $t('settings.everything.info.compatibility') }}</strong></li>
             </ul>
           </div>
         </div>
@@ -447,9 +447,9 @@
       <div v-if="showUnsavedWarning" class="unsaved-warning">
         <div class="warning-content">
           <span class="warning-icon">⚠️</span>
-          <span class="warning-text">检测到未保存的更改，将在3秒后自动保存并关闭</span>
-          <button @click="saveAndClose" class="warning-save-button">立即保存</button>
-          <button @click="discardAndClose" class="warning-discard-button">放弃更改</button>
+          <span class="warning-text">{{ $t('settings.unsaved.warning') }}</span>
+          <button @click="saveAndClose" class="warning-save-button">{{ $t('settings.unsaved.saveNow') }}</button>
+          <button @click="discardAndClose" class="warning-discard-button">{{ $t('settings.unsaved.discard') }}</button>
         </div>
       </div>
 
@@ -572,7 +572,7 @@ Everything搜索语法规则：
           }
         }
       } catch (error) {
-        console.error('加载配置失败:', error);
+        console.error('Load config failed:', error);
       }
     };
 
@@ -596,7 +596,7 @@ Everything搜索语法规则：
           showUnsavedWarning.value = false;
         }
       } catch (error) {
-        console.error('自动保存失败:', error);
+        console.error('Auto save failed:', error);
       }
     };
 
@@ -617,7 +617,7 @@ Everything搜索语法规则：
         // 保存OpenAI配置
         const openaiResult = await window.electronAPI.setOpenAIConfig(configData);
         if (!openaiResult.success) {
-          alert('保存OpenAI配置失败: ' + openaiResult.error);
+          alert(t('messages.error.configSaveFailed') + ': ' + openaiResult.error);
           return;
         }
         
@@ -629,14 +629,14 @@ Everything搜索语法规则：
         
         const portResult = await window.electronAPI.setEverythingPortConfig(portConfigData);
         if (!portResult.success) {
-          alert('保存端口配置失败: ' + portResult.error);
+          alert(t('messages.error.configSaveFailed') + ': ' + portResult.error);
           return;
         }
         
         emit('close');
       } catch (error) {
-        console.error('保存配置失败:', error);
-        alert('保存配置失败: ' + error.message);
+        console.error('Save config failed:', error);
+        alert(t('messages.error.configSaveFailed') + ': ' + error.message);
       } finally {
         isSaving.value = false;
       }
@@ -652,15 +652,15 @@ Everything搜索语法规则：
         everythingStatus.value = result.success;
         
         if (result.success) {
-          testMessage.value = 'Everything连接成功！';
+          testMessage.value = t('messages.success.connected');
           testSuccess.value = true;
         } else {
-          testMessage.value = 'Everything连接失败: ' + result.error;
+          testMessage.value = t('messages.error.connectionFailed') + ': ' + result.error;
           testSuccess.value = false;
         }
       } catch (error) {
         everythingStatus.value = false;
-        testMessage.value = 'Everything连接失败: ' + error.message;
+        testMessage.value = t('messages.error.connectionFailed') + ': ' + error.message;
         testSuccess.value = false;
       } finally {
         isTesting.value = false;
@@ -746,12 +746,12 @@ Everything搜索语法规则：
           autoConnectProgress.value.push({ message, status });
         };
 
-        addProgress('开始一键连接Everything服务...');
+        addProgress(t('messages.info.connecting') + '...');
         
         const result = await window.electronAPI.autoConnectEverything();
         
         if (result.success) {
-          addProgress('Everything HTTP服务连接成功！', 'success');
+          addProgress(t('messages.success.autoConnectSuccess'), 'success');
           autoConnectResult.value = {
             success: true,
             message: result.message,
@@ -764,7 +764,7 @@ Everything搜索语法规则：
           await loadEverythingConfig();
           await testEverything();
         } else {
-          addProgress('连接失败: ' + result.error, 'error');
+          addProgress(t('messages.error.autoConnectFailed', { error: result.error }), 'error');
           autoConnectResult.value = {
             success: false,
             message: result.error
@@ -772,14 +772,14 @@ Everything搜索语法规则：
         }
         
       } catch (error) {
-        console.error('一键连接失败:', error);
+        console.error('Auto connect failed:', error);
         autoConnectProgress.value.push({
-          message: '连接过程中发生错误: ' + error.message,
+          message: t('messages.error.autoConnectError', { error: error.message }),
           status: 'error'
         });
         autoConnectResult.value = {
           success: false,
-          message: '连接过程中发生错误: ' + error.message
+          message: t('messages.error.autoConnectError', { error: error.message })
         };
       } finally {
         isAutoConnecting.value = false;
@@ -813,10 +813,10 @@ Everything搜索语法规则：
         }
         
       } catch (error) {
-        console.error('设置路径失败:', error);
+        console.error('Set path failed:', error);
         autoConnectResult.value = {
           success: false,
-          message: '设置路径失败: ' + error.message
+          message: t('messages.error.pathSetFailed', { error: error.message })
         };
       } finally {
         isManualSetting.value = false;
@@ -833,7 +833,7 @@ Everything搜索语法规则：
         portConfigMode.value = config.portMode || 'auto';
         fixedPort.value = config.fixedPort || 8080;
       } catch (error) {
-        console.error('加载Everything配置失败:', error);
+        console.error('Load Everything config failed:', error);
       }
     };
 
@@ -852,9 +852,9 @@ Everything搜索语法规则：
       try {
         await navigator.clipboard.writeText(text);
         // 简单的成功提示
-        console.log('已复制到剪贴板:', text);
+        console.log('Copied to clipboard:', text);
       } catch (error) {
-        console.error('复制失败:', error);
+        console.error('Copy failed:', error);
         // 备用方法
         const textArea = document.createElement('textarea');
         textArea.value = text;
@@ -907,7 +907,7 @@ Everything搜索语法规则：
     // 语言相关方法
     const changeLanguage = () => {
       if (setLocale(selectedLanguage.value)) {
-        console.log('语言已切换到:', selectedLanguage.value);
+        console.log('Language switched to:', selectedLanguage.value);
       }
     };
 

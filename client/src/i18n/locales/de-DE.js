@@ -141,10 +141,14 @@ export default {
       previewTitle: 'Prompt-Vorschau',
       tips: {
         title: '💡 Verwendungstipps',
-        guidance: 'Klare Anleitung: Sagen Sie KI, wie Suchabsicht zu verstehen und in Everything-Syntax zu konvertieren ist',
-        examples: 'Beispiele einschließen: Einige Konvertierungsbeispiele im Prompt verbessern die Genauigkeit',
-        concise: 'Prägnant halten: Vermeiden Sie zu komplexe Anweisungen, halten Sie Prompt klar und verständlich',
-        test: 'Effektivität testen: Nach Änderung können Sie Effektivität durch reale Suche überprüfen'
+        guidanceTitle: 'Klare Anleitung',
+        guidance: 'Sagen Sie KI, wie Suchabsicht zu verstehen und in Everything-Syntax zu konvertieren ist',
+        examplesTitle: 'Beispiele einschließen',
+        examples: 'Einige Konvertierungsbeispiele im Prompt verbessern die Genauigkeit',
+        conciseTitle: 'Prägnant halten',
+        concise: 'Vermeiden Sie zu komplexe Anweisungen, halten Sie Prompt klar und verständlich',
+        testTitle: 'Effektivität testen',
+        test: 'Nach Änderung können Sie Effektivität durch reale Suche überprüfen'
       }
     },
     
