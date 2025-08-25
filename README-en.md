@@ -1,5 +1,7 @@
 # Everything AI Chat - Intelligent File Search Client
 
+English | [**中文**](./README.md)
+
 A modern Everything search client that perfectly combines AI intelligence with ultra-fast local search. Supports natural language queries, automatically converts to Everything precise search syntax, making file searching simpler and more efficient than ever before.
 
 ## 🌟 Star History
