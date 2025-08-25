@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // 向渲染进程暴露安全的API
 contextBridge.exposeInMainWorld('electronAPI', {
   // 搜索文件
-  searchFiles: (query) => ipcRenderer.invoke('search-files', query),
+  searchFiles: (query, enableStreamDebug = false) => ipcRenderer.invoke('search-files', query, enableStreamDebug),
   
   // 获取搜索历史
   getSearchHistory: () => ipcRenderer.invoke('get-search-history'),
@@ -37,9 +37,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取Everything配置
   getEverythingConfig: () => ipcRenderer.invoke('get-everything-config'),
   
+  // 设置Everything端口配置
+  setEverythingPortConfig: (config) => ipcRenderer.invoke('set-everything-port-config', config),
+  
+  // 导出搜索结果
+  exportResults: (results) => ipcRenderer.invoke('export-results', results),
+  
+  // 显示文件右键菜单
+  showFileContextMenu: (filePath) => ipcRenderer.invoke('show-file-context-menu', filePath),
+  
   // 监听来自主进程的消息
   on: (channel, func) => {
-    const validChannels = ['open-settings'];
+    const validChannels = ['open-settings', 'ai-debug-stream', 'ai-debug-result', 'ai-debug-error'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, func);
     }

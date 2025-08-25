@@ -15,8 +15,11 @@ class EverythingManager {
 
   /**
    * 一键连接Everything服务
+   * @param {Object} options - 连接选项
+   * @param {string} options.portMode - 端口模式 ('auto' 或 'fixed')
+   * @param {number} options.fixedPort - 固定端口号（当portMode为'fixed'时使用）
    */
-  async autoConnect() {
+  async autoConnect(options = {}) {
     try {
       console.log('🔍 开始一键连接Everything服务...');
       
@@ -35,7 +38,7 @@ class EverythingManager {
 
       // 步骤3: 找到可用端口
       console.log('🌐 步骤3: 寻找可用端口...');
-      const availablePort = await this.findAvailablePort();
+      const availablePort = await this.findAvailablePort(options);
       console.log('✅ 找到可用端口:', availablePort);
 
       // 步骤4: 修改配置文件
@@ -569,25 +572,54 @@ class EverythingManager {
 
   /**
    * 寻找可用端口
+   * @param {Object} options - 端口查找选项
+   * @param {string} options.portMode - 端口模式 ('auto' 或 'fixed')
+   * @param {number} options.fixedPort - 固定端口号（当portMode为'fixed'时使用）
+   * @param {number} startPort - 起始端口（仅在auto模式下使用）
    */
-  async findAvailablePort(startPort = 8080) {
+  async findAvailablePort(options = {}, startPort = 8080) {
+    const { portMode = 'auto', fixedPort } = options;
+    
+    // 如果是固定端口模式
+    if (portMode === 'fixed' && fixedPort) {
+      console.log(`🔧 使用固定端口模式: ${fixedPort}`);
+      
+      // 验证端口范围
+      if (fixedPort < 1 || fixedPort > 65535) {
+        throw new Error(`固定端口号无效: ${fixedPort}。端口范围必须在1-65535之间`);
+      }
+      
+      // 检查固定端口是否可用
+      if (await this.isPortAvailable(fixedPort)) {
+        console.log(`✅ 固定端口 ${fixedPort} 可用`);
+        return fixedPort;
+      } else {
+        throw new Error(`固定端口 ${fixedPort} 被占用，请选择其他端口或切换到自动模式`);
+      }
+    }
+    
+    // 自动端口模式（默认行为）
+    console.log('🔍 使用自动端口模式，查找可用端口...');
     const preferredPorts = [8080, 8888, 9080, 9999, 7890, 7891, 8090, 8100];
     
     // 先尝试首选端口
     for (const port of preferredPorts) {
       if (await this.isPortAvailable(port)) {
+        console.log(`✅ 找到首选端口: ${port}`);
         return port;
       }
     }
 
     // 如果首选端口都被占用，从指定端口开始递增查找
+    console.log(`🔄 首选端口都被占用，从 ${startPort} 开始递增查找...`);
     for (let port = startPort; port < startPort + 100; port++) {
       if (await this.isPortAvailable(port)) {
+        console.log(`✅ 找到可用端口: ${port}`);
         return port;
       }
     }
 
-    throw new Error('未找到可用端口');
+    throw new Error('未找到可用端口，请检查系统端口占用情况');
   }
 
   /**

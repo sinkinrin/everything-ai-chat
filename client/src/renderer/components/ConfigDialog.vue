@@ -1,9 +1,9 @@
 <template>
-  <div class="config-overlay" @click="handleOverlayClick">
-    <div class="config-dialog" @click.stop>
+  <div class="config-overlay" @mousedown="handleOverlayMouseDown" @mouseup="handleOverlayMouseUp">
+    <div class="config-dialog" @click.stop @mousedown.stop @mouseup.stop>
       <div class="config-header">
         <h2>设置</h2>
-        <button @click="$emit('close')" class="close-button">×</button>
+        <button @click="closeDialog" class="close-button">×</button>
       </div>
 
       <div class="config-content">
@@ -117,6 +117,64 @@
           </div>
         </div>
 
+        <!-- AI 系统提示词配置 -->
+        <div class="config-section">
+          <div class="section-header" @click="toggleSystemPromptSection">
+            <h3>🤖 AI 系统提示词配置</h3>
+            <button class="collapse-button" :class="{ 'expanded': showSystemPromptSection }" type="button">
+              <span>{{ showSystemPromptSection ? '▼' : '▶' }}</span>
+            </button>
+          </div>
+          
+          <div v-show="showSystemPromptSection" class="system-prompt-content">
+            <p class="config-description">
+              自定义AI的系统提示词来优化搜索结果的质量和风格。系统提示词决定了AI如何理解和转换您的自然语言搜索。
+            </p>
+
+            <div class="form-group">
+              <label for="systemPrompt">系统提示词</label>
+              <textarea
+                id="systemPrompt"
+                v-model="config.systemPrompt"
+                class="form-textarea"
+                placeholder="请输入自定义的系统提示词..."
+                rows="8"
+              ></textarea>
+              <small class="form-help">
+                提示词应该指导AI如何将自然语言转换为Everything搜索语法。留空将使用默认提示词。
+              </small>
+            </div>
+
+            <div class="prompt-actions">
+              <button @click="resetToDefaultPrompt" class="reset-prompt-button" type="button">
+                🔄 重置为默认
+              </button>
+              <button @click="showPromptPreview = !showPromptPreview" class="preview-button" type="button">
+                {{ showPromptPreview ? '隐藏预览' : '预览效果' }}
+              </button>
+            </div>
+
+            <!-- 提示词预览区域 -->
+            <div v-if="showPromptPreview" class="prompt-preview">
+              <h4>提示词预览</h4>
+              <div class="preview-content">
+                {{ getCurrentPrompt() }}
+              </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <div class="prompt-tips">
+              <h4>💡 使用提示</h4>
+              <ul>
+                <li><strong>明确指导</strong>: 告诉AI如何理解搜索意图并转换为Everything语法</li>
+                <li><strong>包含示例</strong>: 在提示词中包含一些转换示例会提高准确性</li>
+                <li><strong>保持简洁</strong>: 避免过于复杂的指令，保持提示词清晰易懂</li>
+                <li><strong>测试效果</strong>: 修改后可以通过实际搜索来验证效果</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <div class="config-section">
           <h3>Everything 设置</h3>
           <p class="config-description">
@@ -219,11 +277,94 @@
                   </div>
                   <div class="credential-item">
                     <span class="credential-label">密码:</span>
-                    <span class="credential-value">{{ showPassword ? autoConnectResult.credentials.password : '•'.repeat(12) }}</span>
+                    <span class="credential-value">{{ showPassword ? autoConnectResult.credentials.password : '•'.repeat(autoConnectResult.credentials.password.length) }}</span>
                     <button @click="togglePasswordVisibility" class="toggle-password-button" :title="showPassword ? '隐藏密码' : '显示密码'">
                       {{ showPassword ? '👁️' : '👁️‍🗨️' }}
                     </button>
                     <button @click="copyToClipboard(autoConnectResult.credentials.password)" class="copy-button" title="复制密码">📋</button>
+                  </div>
+                  <div class="credential-note">
+                    <small>💡 这些凭据已自动保存到Everything配置文件中，下次启动Everything时会自动应用</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 端口配置部分 -->
+          <div class="port-config-section">
+            <h4>🌐 端口配置</h4>
+            <p class="section-description">
+              配置Everything HTTP服务的连接端口
+            </p>
+            
+            <div class="port-config-options">
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    v-model="portConfigMode" 
+                    value="auto" 
+                    name="portMode"
+                  />
+                  <span>自动选择端口（推荐）</span>
+                </label>
+                <div class="radio-description">
+                  系统会自动查找可用的端口，优先使用常用端口如8080、8888等
+                </div>
+              </div>
+              
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    v-model="portConfigMode" 
+                    value="fixed" 
+                    name="portMode"
+                  />
+                  <span>固定端口</span>
+                </label>
+                <div class="radio-description">
+                  使用指定的固定端口，如果端口被占用则连接失败
+                </div>
+                
+                <div v-if="portConfigMode === 'fixed'" class="fixed-port-input">
+                  <div class="form-group">
+                    <label for="fixedPort">端口号</label>
+                    <input
+                      id="fixedPort"
+                      v-model.number="fixedPort"
+                      type="number"
+                      min="1"
+                      max="65535"
+                      placeholder="8080"
+                      class="form-input port-input"
+                      :class="{ 'error': !isValidPort(fixedPort) }"
+                    />
+                    <small class="form-help" :class="{ 'error-text': !isValidPort(fixedPort) }">
+                      <span v-if="isValidPort(fixedPort)">
+                        端口范围：1-65535，建议使用8080、8888、9080等
+                      </span>
+                      <span v-else>
+                        请输入有效的端口号（1-65535）
+                      </span>
+                    </small>
+                  </div>
+                  
+                  <div class="port-suggestions">
+                    <span class="suggestion-label">常用端口：</span>
+                    <div class="port-chips">
+                      <button 
+                        v-for="suggestedPort in suggestedPorts" 
+                        :key="suggestedPort"
+                        @click="fixedPort = suggestedPort"
+                        class="port-chip"
+                        :class="{ active: fixedPort === suggestedPort }"
+                        type="button"
+                      >
+                        {{ suggestedPort }}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -235,8 +376,16 @@
             <h4>当前配置</h4>
             <div class="config-info">
               <div class="config-item">
+                <span class="config-label">端口模式:</span>
+                <span class="config-value">{{ portConfigMode === 'auto' ? '自动选择' : '固定端口' }}</span>
+              </div>
+              <div class="config-item">
                 <span class="config-label">HTTP端口:</span>
                 <span class="config-value">{{ everythingConfig.port || '未设置' }}</span>
+              </div>
+              <div v-if="portConfigMode === 'fixed'" class="config-item">
+                <span class="config-label">配置端口:</span>
+                <span class="config-value">{{ fixedPort || '未设置' }}</span>
               </div>
               <div class="config-item">
                 <span class="config-label">安装路径:</span>
@@ -265,10 +414,20 @@
         </div>
       </div>
 
+      <!-- 未保存更改警告 -->
+      <div v-if="showUnsavedWarning" class="unsaved-warning">
+        <div class="warning-content">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-text">检测到未保存的更改，将在3秒后自动保存并关闭</span>
+          <button @click="saveAndClose" class="warning-save-button">立即保存</button>
+          <button @click="discardAndClose" class="warning-discard-button">放弃更改</button>
+        </div>
+      </div>
+
       <div class="config-footer">
-        <button @click="$emit('close')" class="cancel-button">取消</button>
-        <button @click="saveConfig" :disabled="isSaving" class="save-button">
-          {{ isSaving ? '保存中...' : '保存' }}
+        <button @click="closeDialog" class="cancel-button">取消</button>
+        <button @click="saveConfig" :disabled="isSaving" :class="['save-button', { 'has-changes': hasUnsavedChanges }]">
+          {{ isSaving ? '保存中...' : hasUnsavedChanges ? '保存*' : '保存' }}
         </button>
       </div>
     </div>
@@ -276,7 +435,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, toRaw } from 'vue';
+import { ref, reactive, onMounted, toRaw, watch } from 'vue';
 
 export default {
   name: 'ConfigDialog',
@@ -286,6 +445,8 @@ export default {
       apiKey: '',
       baseURL: 'https://api.openai.com/v1',
       model: 'gpt-3.5-turbo',
+      systemPrompt: '',
+      enableStreamDebug: false,
       displayFields: {
         accessed: false,
         attributes: false,
@@ -302,6 +463,11 @@ export default {
     const testMessage = ref('');
     const testSuccess = ref(false);
     
+    // 自动保存相关状态
+    const hasUnsavedChanges = ref(false);
+    const autoSaveTimeout = ref(null);
+    const showUnsavedWarning = ref(false);
+    
     // 一键连接相关状态
     const isAutoConnecting = ref(false);
     const autoConnectProgress = ref([]);
@@ -317,6 +483,11 @@ export default {
     });
     const showPassword = ref(false);
     
+    // 端口配置相关状态
+    const portConfigMode = ref('auto'); // 'auto' 或 'fixed'
+    const fixedPort = ref(8080);
+    const suggestedPorts = ref([8080, 8888, 9080, 9999, 7890, 7891]);
+    
     // 模型历史记录相关
     const showModelHistory = ref(false);
     const modelHistory = ref([
@@ -331,15 +502,74 @@ export default {
     ]);
     const filteredModelHistory = ref([]);
 
+    // 系统提示词相关状态
+    const showSystemPromptSection = ref(false); // 默认折叠
+    const showPromptPreview = ref(false);
+    
+    // 默认系统提示词
+    const defaultSystemPrompt = `你是一个专业的文件搜索助手，你的任务是将用户的自然语言查询转换为Everything搜索引擎的精确搜索语法。
+
+Everything搜索语法规则：
+- 基本搜索：直接输入关键词
+- 文件类型：使用 ext: 或直接 .扩展名，如 ext:jpg 或 *.jpg
+- 文件大小：使用 size: 如 size:>1MB, size:<100KB
+- 日期范围：使用 dm:、dc:、da: 分别表示修改、创建、访问时间，如 dm:today, dc:thisweek
+- 路径搜索：使用 path: 或直接输入路径关键词
+- 逻辑操作：使用 AND、OR、NOT 或 & | !
+
+示例转换：
+- "今天的图片" → "dm:today ext:jpg|png|gif"
+- "大于10MB的视频" → "size:>10MB ext:mp4|avi|mkv"
+- "本周修改的文档" → "dm:thisweek ext:doc|docx|pdf|txt"
+
+请根据用户的自然语言查询，输出最合适的Everything搜索语法。只输出搜索语法，不要包含解释。`;
+    
+
     const loadConfig = async () => {
       try {
         const savedConfig = await window.electronAPI.getOpenAIConfig();
         if (savedConfig) {
           Object.assign(config, savedConfig);
+          // 如果没有保存的系统提示词，则使用默认值
+          if (!config.systemPrompt) {
+            config.systemPrompt = '';
+          }
         }
       } catch (error) {
         console.error('加载配置失败:', error);
       }
+    };
+
+    // 自动保存功能
+    const autoSave = async () => {
+      if (!hasUnsavedChanges.value) return;
+      
+      try {
+        const configData = JSON.parse(JSON.stringify(toRaw(config)));
+        const openaiResult = await window.electronAPI.setOpenAIConfig(configData);
+        
+        if (openaiResult.success) {
+          // 同时保存端口配置
+          const portConfigData = {
+            portMode: portConfigMode.value,
+            fixedPort: portConfigMode.value === 'fixed' ? fixedPort.value : null
+          };
+          
+          await window.electronAPI.setEverythingPortConfig(portConfigData);
+          hasUnsavedChanges.value = false;
+          showUnsavedWarning.value = false;
+        }
+      } catch (error) {
+        console.error('自动保存失败:', error);
+      }
+    };
+
+    // 延迟自动保存
+    const scheduleAutoSave = () => {
+      if (autoSaveTimeout.value) {
+        clearTimeout(autoSaveTimeout.value);
+      }
+      autoSaveTimeout.value = setTimeout(autoSave, 2000); // 2秒后自动保存
     };
 
     const saveConfig = async () => {
@@ -348,12 +578,26 @@ export default {
         // 使用 JSON 方法彻底移除所有 reactive 特性
         const configData = JSON.parse(JSON.stringify(toRaw(config)));
         
-        const result = await window.electronAPI.setOpenAIConfig(configData);
-        if (result.success) {
-          emit('close');
-        } else {
-          alert('保存配置失败: ' + result.error);
+        // 保存OpenAI配置
+        const openaiResult = await window.electronAPI.setOpenAIConfig(configData);
+        if (!openaiResult.success) {
+          alert('保存OpenAI配置失败: ' + openaiResult.error);
+          return;
         }
+        
+        // 保存端口配置
+        const portConfigData = {
+          portMode: portConfigMode.value,
+          fixedPort: portConfigMode.value === 'fixed' ? fixedPort.value : null
+        };
+        
+        const portResult = await window.electronAPI.setEverythingPortConfig(portConfigData);
+        if (!portResult.success) {
+          alert('保存端口配置失败: ' + portResult.error);
+          return;
+        }
+        
+        emit('close');
       } catch (error) {
         console.error('保存配置失败:', error);
         alert('保存配置失败: ' + error.message);
@@ -415,8 +659,43 @@ export default {
       }, 200);
     };
 
-    const handleOverlayClick = () => {
-      emit('close');
+    // 拖拽检测相关状态
+    const mouseDownPos = ref({ x: 0, y: 0 });
+    const isDragging = ref(false);
+    const dragThreshold = 5; // 像素阈值，超过此值认为是拖拽
+
+    const handleOverlayMouseDown = (event) => {
+      mouseDownPos.value = { x: event.clientX, y: event.clientY };
+      isDragging.value = false;
+    };
+
+    const handleOverlayMouseUp = (event) => {
+      const deltaX = Math.abs(event.clientX - mouseDownPos.value.x);
+      const deltaY = Math.abs(event.clientY - mouseDownPos.value.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // 只有移动距离小于阈值时才认为是点击
+      if (distance < dragThreshold) {
+        closeDialog();
+      }
+    };
+
+    // 关闭对话框时检查是否有未保存更改
+    const closeDialog = async () => {
+      if (hasUnsavedChanges.value) {
+        showUnsavedWarning.value = true;
+        // 给用户一个保存的机会
+        setTimeout(() => {
+          if (showUnsavedWarning.value) {
+            // 如果3秒后用户没有操作，自动保存并关闭
+            autoSave().then(() => {
+              emit('close');
+            });
+          }
+        }, 3000);
+      } else {
+        emit('close');
+      }
     };
 
     // 一键连接Everything服务
@@ -441,7 +720,8 @@ export default {
             success: true,
             message: result.message,
             port: result.port,
-            installPath: result.installPath
+            installPath: result.installPath,
+            credentials: result.credentials // 添加凭据信息
           };
           
           // 更新状态并重新测试连接
@@ -512,6 +792,10 @@ export default {
       try {
         const config = await window.electronAPI.getEverythingConfig();
         everythingConfig.value = config;
+        
+        // 加载端口配置模式
+        portConfigMode.value = config.portMode || 'auto';
+        fixedPort.value = config.fixedPort || 8080;
       } catch (error) {
         console.error('加载Everything配置失败:', error);
       }
@@ -550,12 +834,52 @@ export default {
       showPassword.value = !showPassword.value;
     };
 
+    // 验证端口号
+    const isValidPort = (port) => {
+      return port && Number.isInteger(port) && port >= 1 && port <= 65535;
+    };
+
+    // 系统提示词相关方法
+    const toggleSystemPromptSection = () => {
+      showSystemPromptSection.value = !showSystemPromptSection.value;
+    };
+
+    const resetToDefaultPrompt = () => {
+      config.systemPrompt = defaultSystemPrompt;
+    };
+
+    const getCurrentPrompt = () => {
+      return config.systemPrompt?.trim() || defaultSystemPrompt;
+    };
+
+    // 立即保存并关闭
+    const saveAndClose = async () => {
+      showUnsavedWarning.value = false;
+      await saveConfig();
+    };
+
+    // 放弃更改并关闭
+    const discardAndClose = () => {
+      showUnsavedWarning.value = false;
+      hasUnsavedChanges.value = false;
+      // 重新加载配置，恢复到上次保存的状态
+      loadConfig().then(() => {
+        emit('close');
+      });
+    };
+
     onMounted(() => {
       loadConfig();
       loadEverythingConfig();
       testEverything();
       // 初始化模型历史记录
       filteredModelHistory.value = modelHistory.value;
+      
+      // 监听配置变化，设置未保存标记
+      watch([config, portConfigMode, fixedPort], () => {
+        hasUnsavedChanges.value = true;
+        scheduleAutoSave();
+      }, { deep: true });
     });
 
     return {
@@ -578,18 +902,39 @@ export default {
       everythingConfig,
       showPassword,
       
+      // 端口配置相关
+      portConfigMode,
+      fixedPort,
+      suggestedPorts,
+      
+      // 系统提示词相关
+      showSystemPromptSection,
+      showPromptPreview,
+      defaultSystemPrompt,
+      
+      // 自动保存相关状态
+      hasUnsavedChanges,
+      showUnsavedWarning,
+      
       // 方法
       saveConfig,
       testEverything,
       filterModelHistory,
       selectModel,
       hideModelHistoryDelayed,
-      handleOverlayClick,
+      closeDialog,
       autoConnectEverything,
       setManualPath,
       getProgressIcon,
       copyToClipboard,
-      togglePasswordVisibility
+      togglePasswordVisibility,
+      isValidPort,
+      // 系统提示词方法
+      toggleSystemPromptSection,
+      resetToDefaultPrompt,
+      getCurrentPrompt,
+      saveAndClose,
+      discardAndClose
     };
   }
 };
@@ -1228,6 +1573,126 @@ export default {
   white-space: nowrap;
 }
 
+/* 端口配置样式 */
+.port-config-section {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.port-config-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.port-config-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.radio-label input[type="radio"] {
+  margin: 0;
+  accent-color: var(--primary-color);
+}
+
+.radio-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 24px;
+  line-height: 1.4;
+}
+
+.fixed-port-input {
+  margin-left: 24px;
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: 6px;
+}
+
+.port-input {
+  max-width: 150px;
+}
+
+.port-input.error {
+  border-color: var(--error-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-help.error-text {
+  color: var(--error-color);
+}
+
+.port-suggestions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.suggestion-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.port-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.port-chip {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.port-chip:hover {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.port-chip.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
 /* 凭据显示样式 */
 .credentials-section {
   margin-top: 16px;
@@ -1306,5 +1771,357 @@ export default {
 
 .toggle-password-button:hover {
   background: var(--text-primary);
+}
+
+/* 系统提示词配置样式 */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  margin-bottom: 0;
+  padding: 4px 0;
+  transition: all var(--transition-normal) var(--easing);
+}
+
+.section-header:hover {
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: -4px -8px 0 -8px;
+}
+
+.collapse-button {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all var(--transition-normal) var(--easing);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-secondary);
+  font-size: 12px;
+  min-width: 32px;
+}
+
+.collapse-button:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.collapse-button.expanded {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.system-prompt-content {
+  margin-top: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1000px;
+  }
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all var(--transition-normal) var(--easing);
+  resize: vertical;
+  min-height: 120px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  line-height: 1.5;
+}
+
+.form-textarea:focus {
+  border-color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+  align-items: center;
+}
+
+.reset-prompt-button,
+.preview-button {
+  padding: 8px 16px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal) var(--easing);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.reset-prompt-button {
+  background: rgba(255, 193, 7, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.reset-prompt-button:hover {
+  background: rgba(255, 193, 7, 0.2);
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+
+.preview-button {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
+}
+
+.preview-button:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.prompt-preview {
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.prompt-preview h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-preview h4::before {
+  content: '👁️';
+  font-size: 14px;
+}
+
+.preview-content {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.prompt-tips {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.prompt-tips h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.prompt-tips ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.prompt-tips li {
+  margin-bottom: 8px;
+}
+
+.prompt-tips li strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* 未保存更改警告样式 */
+.unsaved-warning {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 193, 7, 0.95);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.8);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1001;
+  animation: slideInWarning 0.3s ease-out;
+  min-width: 400px;
+  max-width: 90vw;
+}
+
+@keyframes slideInWarning {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.warning-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.warning-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 200px;
+}
+
+.warning-save-button,
+.warning-discard-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.warning-save-button {
+  background: #28a745;
+  color: white;
+}
+
+.warning-save-button:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.warning-discard-button {
+  background: #dc3545;
+  color: white;
+}
+
+.warning-discard-button:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* 保存按钮的未保存状态指示 */
+.save-button:not(:disabled) {
+  position: relative;
+}
+
+.save-button:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  background: #ffc107;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.save-button:not(:disabled).has-changes::after {
+  opacity: 1;
+}
+
+.credential-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+}
+
+.credential-note small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 调试配置样式 */
+.debug-config-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.debug-config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.debug-help {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 4px;
+  margin-left: 24px;
 }
 </style> 

@@ -64,6 +64,51 @@
       </div>
     </div>
 
+    <!-- AI调试输出区域 -->
+    <div v-if="showDebugPanel" class="debug-section">
+      <div class="debug-header">
+        <h3>🤖 AI响应调试</h3>
+        <div class="debug-controls">
+          <button @click="clearDebugOutput" class="debug-clear-button" title="清空调试输出">
+            <span>🗑️</span>
+          </button>
+          <button @click="toggleDebugPanel" class="debug-toggle-button" title="隐藏调试面板">
+            <span>−</span>
+          </button>
+        </div>
+      </div>
+      <div class="debug-content" ref="debugContent">
+        <div v-if="debugMessages.length === 0" class="debug-empty">
+          <div class="debug-empty-icon">🔍</div>
+          <div class="debug-empty-text">等待AI响应...</div>
+          <div class="debug-empty-subtext">执行搜索后这里会显示AI的实时响应过程</div>
+        </div>
+        <div v-else class="debug-messages">
+          <div 
+            v-for="(message, index) in debugMessages" 
+            :key="index" 
+            :class="['debug-message', `debug-${message.type}`]"
+          >
+            <div class="debug-timestamp">{{ formatDebugTime(message.timestamp) }}</div>
+            <div class="debug-message-content">
+              <div v-if="message.type === 'stream'" class="debug-stream-chunk">
+                {{ message.content }}
+              </div>
+              <div v-else-if="message.type === 'result'" class="debug-result">
+                <strong>转换结果:</strong> {{ message.content }}
+              </div>
+              <div v-else-if="message.type === 'error'" class="debug-error">
+                <strong>错误:</strong> {{ message.content }}
+              </div>
+              <div v-else class="debug-info">
+                {{ message.content }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 结果显示区域 -->
     <div class="results-section">
       <!-- 使用 <template> 进行条件渲染分组，仅在有搜索结果时显示内部所有内容 -->
@@ -97,58 +142,71 @@
         <!-- 文件列表 -->
         <div class="file-list">
           <!-- 文件列表的表头，点击可进行排序 -->
-          <div class="file-list-header">
-            <div @click="sortBy('name')" :class="['file-list-column', 'col-name', 'sortable', getSortClass('name')]">文件名
+          <div class="file-list-header" :class="{ dragging: isDragging }" :style="getHeaderStyle">
+            <div @click="sortBy('name')" :class="['file-list-column', 'col-name', 'sortable', getSortClass('name')]" :style="getColumnStyle('name')">
+              文件名
+              <div class="column-resizer" @mousedown="startColumnResize('name', $event)"></div>
             </div>
-            <div @click="sortBy('path')" :class="['file-list-column', 'col-path', 'sortable', getSortClass('path')]">路径
+            <div @click="sortBy('path')" :class="['file-list-column', 'col-path', 'sortable', getSortClass('path')]" :style="getColumnStyle('path')">
+              路径
+              <div class="column-resizer" @mousedown="startColumnResize('path', $event)"></div>
             </div>
-            <div @click="sortBy('size')" :class="['file-list-column', 'col-size', 'sortable', getSortClass('size')]">大小
+            <div @click="sortBy('size')" :class="['file-list-column', 'col-size', 'sortable', getSortClass('size')]" :style="getColumnStyle('size')">
+              大小
+              <div class="column-resizer" @mousedown="startColumnResize('size', $event)"></div>
             </div>
-            <div @click="sortBy('modified')"
-              :class="['file-list-column', 'col-modified', 'sortable', getSortClass('modified')]">修改时间
+            <div @click="sortBy('modified')" :class="['file-list-column', 'col-modified', 'sortable', getSortClass('modified')]" :style="getColumnStyle('modified')">
+              修改时间
+              <div class="column-resizer" @mousedown="startColumnResize('modified', $event)"></div>
             </div>
             <!-- 以下列根据配置动态显示 -->
-            <div v-if="displayFields.created" @click="sortBy('created')"
-              :class="['file-list-column', 'col-created', 'sortable', getSortClass('created')]">创建时间</div>
-            <div v-if="displayFields.accessed" @click="sortBy('accessed')"
-              :class="['file-list-column', 'col-accessed', 'sortable', getSortClass('accessed')]">访问时间
+            <div v-if="displayFields.created" @click="sortBy('created')" :class="['file-list-column', 'col-created', 'sortable', getSortClass('created')]" :style="getColumnStyle('created')">
+              创建时间
+              <div class="column-resizer" @mousedown="startColumnResize('created', $event)"></div>
             </div>
-            <div v-if="displayFields.attributes" @click="sortBy('attributes')"
-              :class="['file-list-column', 'col-attributes', 'sortable', getSortClass('attributes')]">属性
+            <div v-if="displayFields.accessed" @click="sortBy('accessed')" :class="['file-list-column', 'col-accessed', 'sortable', getSortClass('accessed')]" :style="getColumnStyle('accessed')">
+              访问时间
+              <div class="column-resizer" @mousedown="startColumnResize('accessed', $event)"></div>
             </div>
-            <div v-if="displayFields.run_count" @click="sortBy('run_count')"
-              :class="['file-list-column', 'col-run-count', 'sortable', getSortClass('run_count')]">运行次数
+            <div v-if="displayFields.attributes" @click="sortBy('attributes')" :class="['file-list-column', 'col-attributes', 'sortable', getSortClass('attributes')]" :style="getColumnStyle('attributes')">
+              属性
+              <div class="column-resizer" @mousedown="startColumnResize('attributes', $event)"></div>
             </div>
-            <div @click="sortBy('extension')"
-              :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]">类型</div>
+            <div v-if="displayFields.run_count" @click="sortBy('run_count')" :class="['file-list-column', 'col-run-count', 'sortable', getSortClass('run_count')]" :style="getColumnStyle('run_count')">
+              运行次数
+              <div class="column-resizer" @mousedown="startColumnResize('run_count', $event)"></div>
+            </div>
+            <div @click="sortBy('extension')" :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]" :style="getColumnStyle('type')">
+              类型
+            </div>
           </div>
 
           <!-- 文件列表的主体内容，遍历排序后的结果 -->
-          <div class="file-list-body">
+          <div class="file-list-body" ref="fileListBody">
             <div v-for="file in sortedResults" :key="file.path" @click="openFile(file)"
               @contextmenu.prevent="showFileContextMenu(file, $event)" class="file-row">
-              <div class="file-cell col-name">
+              <div class="file-cell col-name" :style="getColumnStyle('name')">
                 <span class="file-icon">{{ getFileIcon(file.extension) }}</span>
                 <span class="file-name">{{ getDisplayFileName(file) }}</span>
               </div>
-              <div class="file-cell col-path"><span class="file-path">{{ file.directory }}</span></div>
-              <div class="file-cell col-size"><span class="file-size">
+              <div class="file-cell col-path" :style="getColumnStyle('path')"><span class="file-path">{{ file.directory }}</span></div>
+              <div class="file-cell col-size" :style="getColumnStyle('size')"><span class="file-size">
                   {{ formatFileSize(file.size) }}
                 </span></div>
-              <div class="file-cell col-modified"><span class="file-modified">
+              <div class="file-cell col-modified" :style="getColumnStyle('modified')"><span class="file-modified">
                   {{ formatDate(file.modified) }}
                 </span>
               </div>
               <!-- 以下单元格根据配置动态显示 -->
-              <div v-if="displayFields.created" class="file-cell col-created"><span class="file-created">{{
+              <div v-if="displayFields.created" class="file-cell col-created" :style="getColumnStyle('created')"><span class="file-created">{{
                 formatDate(file.created) }}</span></div>
-              <div v-if="displayFields.accessed" class="file-cell col-accessed"><span class="file-accessed">{{
+              <div v-if="displayFields.accessed" class="file-cell col-accessed" :style="getColumnStyle('accessed')"><span class="file-accessed">{{
                 formatDate(file.accessed) }}</span></div>
-              <div v-if="displayFields.attributes" class="file-cell col-attributes"><span class="file-attributes">{{
+              <div v-if="displayFields.attributes" class="file-cell col-attributes" :style="getColumnStyle('attributes')"><span class="file-attributes">{{
                 file.attributes || '-' }}</span></div>
-              <div v-if="displayFields.run_count" class="file-cell col-run-count"><span class="file-run-count">{{
+              <div v-if="displayFields.run_count" class="file-cell col-run-count" :style="getColumnStyle('run_count')"><span class="file-run-count">{{
                 file.run_count || 0 }}</span></div>
-              <div class="file-cell col-type"><span class="file-type">{{ file.extension || 'FILE' }}
+              <div class="file-cell col-type" :style="getColumnStyle('type')"><span class="file-type">{{ file.extension || 'FILE' }}
                 </span></div>
             </div>
           </div>
@@ -157,8 +215,14 @@
 
       <!-- 当没有搜索结果时，此区域将根据不同状态显示对应内容 -->
       <div v-else class="state-container">
-        <!-- 状态1: 优先显示错误信息 -->
-        <div v-if="errorMessage" class="error-state">
+        <!-- 状态0: 优先显示成功信息 -->
+        <div v-if="showSuccessMessage" class="success-state">
+          <div class="success-icon">✅</div>
+          <div class="success-message">{{ showSuccessMessage }}</div>
+        </div>
+        
+        <!-- 状态1: 显示错误信息 -->
+        <div v-else-if="errorMessage" class="error-state">
           <div class="error-icon">⚠️</div>
           <div class="error-message">{{ errorMessage }}</div>
           <!-- 允许用户清除错误信息 -->
@@ -218,7 +282,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import ConfigDialog from './components/ConfigDialog.vue';
 
 // --- 优化点: 将纯辅助函数移到 setup 外部 ---
@@ -298,6 +362,7 @@ export default {
     const isSearching = ref(false); // 是否正在执行搜索
     const hasSearched = ref(false); // 是否已经执行过至少一次搜索
     const errorMessage = ref(''); // 错误信息
+    const showSuccessMessage = ref(''); // 成功消息
     const showHistory = ref(false); // 是否显示搜索历史下拉框
     const historySelectedIndex = ref(-1); // 当前在历史记录中选中的项的索引
     const showConfigDialog = ref(false); // 是否显示配置对话框
@@ -314,6 +379,33 @@ export default {
     });
     const sortState = reactive({ field: 'name', direction: 'asc' }); // 排序状态
     const searchInput = ref(null); // 对输入框DOM元素的引用
+    
+    // 调试相关状态
+    const showDebugPanel = ref(false); // 是否显示调试面板
+    const debugMessages = ref([]); // 调试消息列表
+    const debugContent = ref(null); // 调试内容容器的引用
+    const debugConfig = ref({ enableStreamDebug: false }); // 调试配置
+    
+    // 列宽调整相关状态
+    const columnWidths = ref({
+      name: 240,
+      path: 320, 
+      size: 100,
+      modified: 140,
+      type: 90,
+      created: 140,
+      accessed: 140,
+      attributes: 100,
+      run_count: 80
+    });
+    const isDragging = ref(false);
+    const dragColumn = ref('');
+    const dragStartX = ref(0);
+    const dragStartWidth = ref(0);
+    
+    // 滚动条补偿相关状态
+    const hasScrollbar = ref(false);
+    const fileListBody = ref(null);
 
     // --- 计算属性 ---
 
@@ -378,12 +470,32 @@ export default {
       searchStartTime.value = Date.now();
       searchResults.value = []; // 立即清空旧结果，以触发加载状态
 
+      // 调试模式：添加搜索开始消息
+      if (debugConfig.value.enableStreamDebug) {
+        clearDebugOutput();
+        addDebugMessage('info', `开始搜索: "${query}"`);
+      }
+
       try {
-        const result = await window.electronAPI.searchFiles(query);
+        const result = await window.electronAPI.searchFiles(query, debugConfig.value.enableStreamDebug);
         if (result.success) {
-          searchResults.value = result.results || [];
+          const results = result.results || [];
+          searchResults.value = results;
           lastEverythingQuery.value = result.everythingQuery || query;
           searchDuration.value = Date.now() - searchStartTime.value;
+          
+          // 如果搜索结果为空，设置一个延时后自动清空搜索内容
+          if (results.length === 0) {
+            setTimeout(() => {
+              // 只有在没有新的搜索操作时才清空
+              if (!isSearching.value && searchResults.value.length === 0) {
+                searchQuery.value = '';
+                hasSearched.value = false;
+                errorMessage.value = '';
+              }
+            }, 3000); // 3秒后自动清空
+          }
+          
           await loadSearchHistory(); // 成功后刷新历史记录
         } else {
           errorMessage.value = result.error || '搜索失败，未知错误。';
@@ -498,18 +610,45 @@ export default {
     /**
      * 显示文件的右键上下文菜单
      */
-    const showFileContextMenu = (file) => {
-      // TODO: 实现右键菜单
+    const showFileContextMenu = (file, event) => {
+      // 阻止浏览器默认右键菜单
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      
+      // 调用 Electron 显示自定义右键菜单
       window.electronAPI?.showFileContextMenu(file.path);
     };
 
     /**
      * 导出搜索结果
      */
-    const exportResults = () => {
-      // TODO: 实现导出功能
-      // 导出经过排序的结果
-      window.electronAPI?.exportResults(sortedResults.value);
+    const exportResults = async () => {
+      try {
+        const result = await window.electronAPI?.exportResults(sortedResults.value);
+        if (result?.success) {
+          // 显示成功消息，可以使用现有的状态显示机制
+          console.log('导出成功:', result.message);
+          // 可以在这里添加一个成功提示的状态
+          showSuccessMessage.value = result.message;
+          setTimeout(() => {
+            showSuccessMessage.value = '';
+          }, 3000);
+        } else {
+          // 显示错误消息
+          errorMessage.value = result?.error || '导出失败';
+          setTimeout(() => {
+            errorMessage.value = '';
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('导出失败:', error);
+        errorMessage.value = `导出过程中发生错误: ${error.message}`;
+        setTimeout(() => {
+          errorMessage.value = '';
+        }, 3000);
+      }
     };
 
     /**
@@ -565,35 +704,269 @@ export default {
       }
     };
 
+    // --- 调试相关方法 ---
+    
+    /**
+     * 添加调试消息
+     */
+    const addDebugMessage = (type, content) => {
+      debugMessages.value.push({
+        type,
+        content,
+        timestamp: Date.now()
+      });
+      
+      // 自动滚动到底部
+      nextTick(() => {
+        if (debugContent.value) {
+          debugContent.value.scrollTop = debugContent.value.scrollHeight;
+        }
+      });
+      
+      // 限制消息数量，避免内存溢出
+      if (debugMessages.value.length > 200) {
+        debugMessages.value.splice(0, debugMessages.value.length - 200);
+      }
+    };
+
+    /**
+     * 清空调试输出
+     */
+    const clearDebugOutput = () => {
+      debugMessages.value = [];
+    };
+
+    /**
+     * 切换调试面板显示/隐藏
+     */
+    const toggleDebugPanel = () => {
+      showDebugPanel.value = !showDebugPanel.value;
+    };
+
+    /**
+     * 格式化调试时间戳
+     */
+    const formatDebugTime = (timestamp) => {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3
+      });
+    };
+
+    /**
+     * 加载调试配置
+     */
+    const loadDebugConfig = async () => {
+      try {
+        const config = await window.electronAPI.getOpenAIConfig();
+        debugConfig.value = {
+          enableStreamDebug: config.enableStreamDebug || false
+        };
+        
+        // 根据配置显示或隐藏调试面板
+        showDebugPanel.value = debugConfig.value.enableStreamDebug;
+      } catch (error) {
+        console.error('加载调试配置失败:', error);
+      }
+    };
+
+    /**
+     * 开始列宽拖拽调整
+     */
+    const startColumnResize = (columnName, event) => {
+      if (event.button !== 0) return; // 只响应左键
+      isDragging.value = true;
+      dragColumn.value = columnName;
+      dragStartX.value = event.clientX;
+      dragStartWidth.value = columnWidths.value[columnName];
+      
+      // 添加全局拖拽样式
+      document.body.classList.add('column-resizing');
+      
+      document.addEventListener('mousemove', handleColumnResize);
+      document.addEventListener('mouseup', stopColumnResize);
+      event.preventDefault();
+      event.stopPropagation(); // 阻止点击排序
+    };
+
+    /**
+     * 处理列宽拖拽
+     */
+    const handleColumnResize = (event) => {
+      if (!isDragging.value) return;
+      
+      const deltaX = event.clientX - dragStartX.value;
+      const newWidth = Math.max(60, dragStartWidth.value + deltaX);
+      
+      columnWidths.value[dragColumn.value] = newWidth;
+    };
+
+    /**
+     * 停止列宽拖拽
+     */
+    const stopColumnResize = () => {
+      if (isDragging.value) {
+        isDragging.value = false;
+        dragColumn.value = '';
+        // 保存列宽设置到localStorage
+        saveColumnWidths();
+      }
+      
+      // 移除全局拖拽样式
+      document.body.classList.remove('column-resizing');
+      
+      document.removeEventListener('mousemove', handleColumnResize);
+      document.removeEventListener('mouseup', stopColumnResize);
+    };
+
+    /**
+     * 保存列宽设置
+     */
+    const saveColumnWidths = () => {
+      try {
+        localStorage.setItem('file-list-column-widths', JSON.stringify(columnWidths.value));
+      } catch (error) {
+        console.error('保存列宽设置失败:', error);
+      }
+    };
+
+    /**
+     * 加载列宽设置
+     */
+    const loadColumnWidths = () => {
+      try {
+        const saved = localStorage.getItem('file-list-column-widths');
+        if (saved) {
+          const parsedWidths = JSON.parse(saved);
+          columnWidths.value = { ...columnWidths.value, ...parsedWidths };
+        }
+      } catch (error) {
+        console.error('加载列宽设置失败:', error);
+      }
+    };
+
+    /**
+     * 获取列的样式
+     */
+    const getColumnStyle = (columnName) => {
+      return {
+        width: `${columnWidths.value[columnName]}px`,
+        minWidth: `${Math.min(columnWidths.value[columnName], 60)}px`,
+        maxWidth: `${columnWidths.value[columnName]}px`,
+        flex: 'none'
+      };
+    };
+
+    /**
+     * 检测表体是否存在滚动条
+     */
+    const checkScrollbar = () => {
+      nextTick(() => {
+        if (fileListBody.value) {
+          const element = fileListBody.value;
+          const hasVerticalScrollbar = element.scrollHeight > element.clientHeight;
+          hasScrollbar.value = hasVerticalScrollbar;
+        }
+      });
+    };
+
+    /**
+     * 获取表头的样式，包含滚动条补偿
+     */
+    const getHeaderStyle = computed(() => {
+      return {
+        paddingRight: hasScrollbar.value ? '6px' : '0px'
+      };
+    });
+
+    // --- 监听器 ---
+    
+    // 监听搜索结果变化，检测滚动条状态
+    watch(searchResults, () => {
+      checkScrollbar();
+    }, { flush: 'post' });
+
     // --- 生命周期钩子 ---
+    
+    // 窗口大小变化处理函数
+    const handleResize = () => {
+      checkScrollbar();
+    };
+    
     onMounted(() => {
       // 组件挂载后，加载初始数据
       loadSearchHistory();
       loadDisplayFieldsConfig();
+      loadColumnWidths(); // 加载列宽设置
+      loadDebugConfig(); // 加载调试配置
       checkEverythingStatus();
       // 定期检查Everything连接状态
       setInterval(checkEverythingStatus, 30000); // 每30秒检查一次
       
-      // 监听来自主进程的打开设置消息
+      // 监听窗口大小变化，重新检测滚动条
+      window.addEventListener('resize', handleResize);
+      
+      // 监听来自主进程的消息
       if (window.electronAPI?.on) {
         window.electronAPI.on('open-settings', () => {
           showConfigDialog.value = true;
         });
+        
+        // 监听AI调试流式输出
+        window.electronAPI.on('ai-debug-stream', (data) => {
+          if (debugConfig.value.enableStreamDebug) {
+            addDebugMessage(data.type || 'stream', data.content || '');
+          }
+        });
+        
+        // 监听AI调试结果
+        window.electronAPI.on('ai-debug-result', (data) => {
+          if (debugConfig.value.enableStreamDebug) {
+            addDebugMessage('result', data.result || '');
+          }
+        });
+        
+        // 监听AI调试错误
+        window.electronAPI.on('ai-debug-error', (data) => {
+          if (debugConfig.value.enableStreamDebug) {
+            addDebugMessage('error', data.error || '');
+          }
+        });
       }
+    });
+
+    // 组件卸载时清理事件监听器
+    onBeforeUnmount(() => {
+      window.removeEventListener('resize', handleResize);
     });
 
     // 返回所有需要在模板中使用的数据和方法
     return {
       // 数据
-      searchQuery, searchResults, searchHistory, isSearching, hasSearched, errorMessage,
+      searchQuery, searchResults, searchHistory, isSearching, hasSearched, errorMessage, showSuccessMessage,
       showHistory, historySelectedIndex, showConfigDialog, lastSearchQuery, lastEverythingQuery,
       searchInput, displayFields, everythingConnected, everythingTesting, isMaximized, searchDuration,
+      // 调试相关数据
+      showDebugPanel, debugMessages, debugContent, debugConfig,
+      // 列宽调整相关数据
+      columnWidths, isDragging, dragColumn,
+      // 滚动条补偿相关数据
+      hasScrollbar, fileListBody,
       // 计算属性
-      filteredHistory, sortedResults, everythingStatusClass, everythingStatusText,
+      filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
       // 方法
       performSearch, selectHistoryItem, navigateHistory, hideHistoryDelayed, sortBy, getSortClass,
       openFile, showFileContextMenu, exportResults, clearResults, trySuggestion,
       minimizeWindow, toggleMaximize, closeWindow, checkEverythingStatus,
+      // 调试相关方法
+      addDebugMessage, clearDebugOutput, toggleDebugPanel, formatDebugTime, loadDebugConfig,
+      // 列宽调整方法
+      startColumnResize, getColumnStyle,
+      // 滚动条检测方法
+      checkScrollbar,
       // 新增和外部方法
       clearError, formatFileSize, formatDate, getFileIcon, getDisplayFileName
     };

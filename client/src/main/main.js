@@ -175,21 +175,19 @@ function initOpenAI() {
 }
 
 // IPC处理器
-ipcMain.handle('search-files', async (event, query) => {
+ipcMain.handle('search-files', async (event, query, enableStreamDebug = false) => {
   try {
     // 先尝试将自然语言转换为Everything查询语法
     let everythingQuery = query;
 
     if (openai && query.length > 3) {
       try {
-        const aiResponse = await openai.chat.completions.create({
-          model: store.get('openai.model', 'gpt-3.5-turbo'),
-          messages: [{
-            role: 'system',
-            content: `你是一个专业的Everything搜索语法生成器。请将用户的自然语言查询转换为Everything搜索语法，并以JSON格式返回结果。`
-          }, {
-            role: 'user',
-            content: `
+        const aiMessages = [{
+          role: 'system',
+          content: `你是一个专业的Everything搜索语法生成器。请将用户的自然语言查询转换为Everything搜索语法，并以JSON格式返回结果。`
+        }, {
+          role: 'user',
+          content: `
 根据everything搜索语法，将以下自然语言转化为合规语法:
 
 【语法定义】
@@ -768,14 +766,59 @@ ${query}
   "query": "合规搜索语法"
 }
             `
-          }],
-          max_tokens: 200,
-          temperature: 0.7,
-          response_format: { type: "json_object" }
-        });
+        }];
+
+        let responseContent = '';
+
+        if (enableStreamDebug) {
+          // 流式调用模式 - 用于调试
+          event.sender.send('ai-debug-stream', {
+            type: 'info',
+            content: '🚀 开始AI转换自然语言查询...'
+          });
+
+          const aiResponse = await openai.chat.completions.create({
+            model: store.get('openai.model', 'gpt-3.5-turbo'),
+            messages: aiMessages,
+            max_tokens: 200,
+            temperature: 0.7,
+            stream: true
+          });
+
+          // 处理流式响应
+          let fullResponse = '';
+          for await (const chunk of aiResponse) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              fullResponse += content;
+              // 发送流式调试消息
+              event.sender.send('ai-debug-stream', {
+                type: 'stream',
+                content: content
+              });
+            }
+          }
+
+          // 发送完整响应结果
+          event.sender.send('ai-debug-result', {
+            result: fullResponse
+          });
+
+          responseContent = fullResponse.trim();
+        } else {
+          // 非流式调用模式 - 正常使用
+          const aiResponse = await openai.chat.completions.create({
+            model: store.get('openai.model', 'gpt-3.5-turbo'),
+            messages: aiMessages,
+            max_tokens: 200,
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+          });
+
+          responseContent = aiResponse.choices[0].message.content.trim();
+        }
 
         // 解析JSON响应
-        const responseContent = aiResponse.choices[0].message.content.trim();
         try {
           const parsedResponse = JSON.parse(responseContent);
 
@@ -798,17 +841,42 @@ ${query}
           console.error('解析AI响应JSON失败:', parseError);
           console.error('原始响应:', responseContent);
 
+          if (enableStreamDebug) {
+            event.sender.send('ai-debug-error', {
+              error: `JSON解析失败: ${parseError.message}`
+            });
+          }
+
           // 回退到简单文本提取
           const fallbackMatch = responseContent.match(/"query"\s*:\s*"([^"]+)"/);
           if (fallbackMatch) {
             everythingQuery = fallbackMatch[1].trim();
             console.log('使用回退方案提取查询:', everythingQuery);
+            
+            if (enableStreamDebug) {
+              event.sender.send('ai-debug-stream', {
+                type: 'info',
+                content: `🔧 回退方案成功提取查询: ${everythingQuery}`
+              });
+            }
           } else {
+            if (enableStreamDebug) {
+              event.sender.send('ai-debug-error', {
+                error: '无法从AI响应中提取查询语句，将使用原始查询'
+              });
+            }
             throw new Error('无法从AI响应中提取查询语句');
           }
         }
       } catch (error) {
         console.error('OpenAI转换失败:', error);
+        
+        if (enableStreamDebug) {
+          event.sender.send('ai-debug-error', {
+            error: `AI转换失败: ${error.message}，使用本地优化`
+          });
+        }
+        
         // 如果OpenAI失败，使用本地优化规则
         everythingQuery = everythingSearch.optimizeQuery(query);
       }
@@ -818,12 +886,31 @@ ${query}
     }
 
     // 执行Everything搜索 - 新的API已经默认包含所有必要信息
+    if (enableStreamDebug) {
+      event.sender.send('ai-debug-stream', {
+        type: 'info',
+        content: `🔍 执行Everything搜索: ${everythingQuery}`
+      });
+    }
+    
     const searchResult = await everythingSearch.search(everythingQuery, {
       count: 1000
     });
 
     if (!searchResult.success) {
+      if (enableStreamDebug) {
+        event.sender.send('ai-debug-error', {
+          error: `Everything搜索失败: ${searchResult.error || '未知错误'}`
+        });
+      }
       throw new Error(searchResult.error || 'Everything搜索失败');
+    }
+
+    if (enableStreamDebug) {
+      event.sender.send('ai-debug-stream', {
+        type: 'info',
+        content: `✅ 搜索完成，找到 ${searchResult.results?.length || 0} 个结果`
+      });
     }
 
     // 保存搜索历史
@@ -839,6 +926,13 @@ ${query}
 
   } catch (error) {
     console.error('搜索失败:', error);
+    
+    if (enableStreamDebug) {
+      event.sender.send('ai-debug-error', {
+        error: `搜索过程出现错误: ${error.message}`
+      });
+    }
+    
     return {
       success: false,
       error: error.message
@@ -996,7 +1090,9 @@ ipcMain.handle('auto-connect-everything', async () => {
       initEverythingManager();
     }
 
-    const result = await everythingManager.autoConnect();
+    // 获取端口配置
+    const portConfig = store.get('everything.portConfig', { portMode: 'auto' });
+    const result = await everythingManager.autoConnect(portConfig);
 
     if (result.success) {
       // 更新Everything搜索实例的端口和凭据
@@ -1012,6 +1108,12 @@ ipcMain.handle('auto-connect-everything', async () => {
         // 更新EverythingSearch实例的凭据
         everythingSearch.setCredentials(result.credentials.username, result.credentials.password);
       }
+
+      // 确保凭据信息被传递回前端
+      return {
+        ...result,
+        credentials: result.credentials // 显式返回凭据信息
+      };
     }
 
     return result;
@@ -1051,12 +1153,601 @@ ipcMain.handle('set-everything-path', async (event, userPath) => {
 // 获取Everything配置
 ipcMain.handle('get-everything-config', async () => {
   const credentials = store.get('everything.credentials', null);
+  const portConfig = store.get('everything.portConfig', { portMode: 'auto' });
   return {
     port: store.get('everything.port', 80),
     installPath: store.get('everything.installPath', ''),
     hasCredentials: !!credentials,
     username: credentials ? credentials.username : '',
+    portMode: portConfig.portMode || 'auto',
+    fixedPort: portConfig.fixedPort || 8080,
   };
+});
+
+// 设置Everything端口配置
+ipcMain.handle('set-everything-port-config', async (event, config) => {
+  try {
+    console.log('保存端口配置:', config);
+    
+    // 验证配置
+    if (!config || !config.portMode) {
+      return { success: false, error: '端口配置无效' };
+    }
+    
+    if (config.portMode === 'fixed') {
+      const fixedPort = config.fixedPort;
+      if (!fixedPort || fixedPort < 1 || fixedPort > 65535) {
+        return { success: false, error: '固定端口号无效，必须在1-65535之间' };
+      }
+    }
+    
+    // 保存端口配置
+    store.set('everything.portConfig', {
+      portMode: config.portMode,
+      fixedPort: config.fixedPort || null
+    });
+    
+    console.log('端口配置已保存:', store.get('everything.portConfig'));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('保存端口配置失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 导出搜索结果
+ipcMain.handle('export-results', async (event, results) => {
+  try {
+    if (!results || results.length === 0) {
+      return { success: false, error: '没有可导出的结果' };
+    }
+
+    const { dialog } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+
+    // 显示保存对话框
+    const saveResult = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+      title: '导出搜索结果',
+      defaultPath: `搜索结果_${new Date().toISOString().slice(0, 10)}.csv`,
+      filters: [
+        { name: 'CSV文件', extensions: ['csv'] },
+        { name: 'JSON文件', extensions: ['json'] },
+        { name: '文本文件', extensions: ['txt'] }
+      ]
+    });
+
+    if (saveResult.canceled) {
+      return { success: false, error: '用户取消导出' };
+    }
+
+    const filePath = saveResult.filePath;
+    const ext = path.extname(filePath).toLowerCase();
+
+    let content;
+    if (ext === '.json') {
+      // JSON格式导出
+      content = JSON.stringify(results, null, 2);
+    } else if (ext === '.txt') {
+      // 纯文本格式导出
+      content = results.map(file => `${file.name || ''}\t${file.path || ''}\t${file.size || ''}\t${file.modified || ''}`).join('\n');
+    } else {
+      // CSV格式导出 (默认)
+      const csvHeader = 'Name,Path,Size,Modified,Created,Type\n';
+      const csvRows = results.map(file => {
+        // 确保CSV字段中的引号和逗号被正确处理
+        const escapeCSV = (value) => {
+          if (!value) return '';
+          const str = String(value);
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+
+        return [
+          escapeCSV(file.name || ''),
+          escapeCSV(file.path || ''),
+          escapeCSV(file.size || ''),
+          escapeCSV(file.modified || ''),
+          escapeCSV(file.created || ''),
+          escapeCSV(file.extension || '')
+        ].join(',');
+      }).join('\n');
+      
+      content = csvHeader + csvRows;
+    }
+
+    // 写入文件
+    fs.writeFileSync(filePath, content, 'utf8');
+
+    return {
+      success: true,
+      filePath: filePath,
+      count: results.length,
+      message: `成功导出 ${results.length} 个文件信息到: ${filePath}`
+    };
+
+  } catch (error) {
+    console.error('导出结果失败:', error);
+    return {
+      success: false,
+      error: `导出失败: ${error.message}`
+    };
+  }
+});
+
+// 显示文件右键菜单
+ipcMain.handle('show-file-context-menu', async (event, filePath) => {
+  try {
+    const { Menu, shell, dialog } = require('electron');
+    const path = require('path');
+    const fs = require('fs');
+
+    // 检查文件是否存在
+    const fileExists = fs.existsSync(filePath);
+    const isFile = fileExists ? fs.statSync(filePath).isFile() : true;
+    const isDirectory = fileExists ? fs.statSync(filePath).isDirectory() : false;
+    
+    // 获取文件扩展名和类型
+    const fileExt = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath);
+    
+    // 文件类型判断
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff'].includes(fileExt);
+    const isAudio = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'].includes(fileExt);
+    const isVideo = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v'].includes(fileExt);
+    const isDocument = ['.doc', '.docx', '.pdf', '.txt', '.rtf', '.odt'].includes(fileExt);
+    const isSpreadsheet = ['.xls', '.xlsx', '.csv', '.ods'].includes(fileExt);
+    const isArchive = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'].includes(fileExt);
+    const isExecutable = ['.exe', '.msi', '.bat', '.cmd', '.com'].includes(fileExt);
+    const isCode = ['.js', '.ts', '.html', '.css', '.py', '.java', '.cpp', '.c', '.php', '.go', '.rs', '.vue', '.jsx', '.tsx'].includes(fileExt);
+    
+    const menuTemplate = [
+      {
+        label: '打开',
+        click: async () => {
+          try {
+            await shell.openPath(filePath);
+          } catch (error) {
+            console.error('打开文件失败:', error);
+          }
+        },
+        enabled: fileExists
+      },
+      {
+        label: '用其他应用打开...',
+        click: async () => {
+          try {
+            // 显示文件选择对话框
+            const result = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
+              title: '选择应用程序',
+              properties: ['openFile'],
+              filters: [
+                { name: '可执行文件', extensions: ['exe'] },
+                { name: '所有文件', extensions: ['*'] }
+              ]
+            });
+
+            if (!result.canceled && result.filePaths[0]) {
+              const { spawn } = require('child_process');
+              spawn(result.filePaths[0], [filePath], { detached: true });
+            }
+          } catch (error) {
+            console.error('用其他应用打开失败:', error);
+          }
+        },
+        enabled: fileExists && isFile
+      },
+      // 图片特定功能
+      ...(isImage ? [{
+        label: '设置为桌面壁纸',
+        click: async () => {
+          try {
+            // Windows 设置壁纸的方法
+            if (process.platform === 'win32') {
+              const { spawn } = require('child_process');
+              spawn('reg', ['add', 'HKCU\\Control Panel\\Desktop', '/v', 'Wallpaper', '/t', 'REG_SZ', '/d', filePath, '/f'], { shell: true });
+              spawn('RUNDLL32.EXE', ['user32.dll,UpdatePerUserSystemParameters'], { shell: true });
+              
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '设置壁纸',
+                message: '桌面壁纸已设置',
+                buttons: ['确定']
+              });
+            } else {
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '设置壁纸',
+                message: '此功能仅在Windows系统上可用',
+                buttons: ['确定']
+              });
+            }
+          } catch (error) {
+            console.error('设置壁纸失败:', error);
+          }
+        },
+        enabled: fileExists && process.platform === 'win32'
+      }, {
+        label: '图片信息',
+        click: async () => {
+          try {
+            const stats = fs.statSync(filePath);
+            await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'info',
+              title: '图片信息',
+              message: fileName,
+              detail: `格式: ${fileExt.toUpperCase()}\n大小: ${(stats.size / 1024).toFixed(2)} KB\n修改时间: ${stats.mtime.toLocaleString('zh-CN')}`,
+              buttons: ['确定']
+            });
+          } catch (error) {
+            console.error('获取图片信息失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      // 音频文件特定功能  
+      ...(isAudio ? [{
+        label: '播放',
+        click: async () => {
+          try {
+            await shell.openPath(filePath);
+          } catch (error) {
+            console.error('播放音频失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      // 视频文件特定功能
+      ...(isVideo ? [{
+        label: '播放视频',
+        click: async () => {
+          try {
+            await shell.openPath(filePath);
+          } catch (error) {
+            console.error('播放视频失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      // 文档特定功能
+      ...(isDocument ? [{
+        label: '打印文档',
+        click: async () => {
+          try {
+            await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'info',
+              title: '打印文档',
+              message: '请使用文档编辑器的打印功能',
+              detail: '建议先打开文档，然后使用编辑器内的打印功能以获得最佳效果。',
+              buttons: ['确定']
+            });
+          } catch (error) {
+            console.error('打印文档失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      // 压缩文件特定功能
+      ...(isArchive ? [{
+        label: '解压缩到当前文件夹',
+        click: async () => {
+          try {
+            await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'info',
+              title: '解压缩',
+              message: '解压缩功能暂未实现',
+              detail: '请使用系统自带的解压工具或第三方解压软件。',
+              buttons: ['确定']
+            });
+          } catch (error) {
+            console.error('解压缩失败:', error);
+          }
+        },
+        enabled: fileExists
+      }, {
+        label: '解压缩到新文件夹',
+        click: async () => {
+          try {
+            await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'info', 
+              title: '解压缩',
+              message: '解压缩功能暂未实现',
+              detail: '请使用系统自带的解压工具或第三方解压软件。',
+              buttons: ['确定']
+            });
+          } catch (error) {
+            console.error('解压缩失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      // 可执行文件特定功能
+      ...(isExecutable ? [{
+        label: '以管理员身份运行',
+        click: async () => {
+          try {
+            if (process.platform === 'win32') {
+              const { spawn } = require('child_process');
+              spawn('powershell', ['-Command', `Start-Process "${filePath}" -Verb RunAs`], { shell: true });
+            } else {
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '管理员权限',
+                message: '此功能仅在Windows系统上可用',
+                buttons: ['确定']
+              });
+            }
+          } catch (error) {
+            console.error('以管理员身份运行失败:', error);
+          }
+        },
+        enabled: fileExists && process.platform === 'win32'
+      }] : []),
+      // 代码文件特定功能
+      ...(isCode ? [{
+        label: '在代码编辑器中打开',
+        click: async () => {
+          try {
+            // 尝试用常见的代码编辑器打开
+            const editors = ['code', 'notepad++', 'sublime_text', 'atom'];
+            let opened = false;
+            
+            for (const editor of editors) {
+              try {
+                const { spawn } = require('child_process');
+                spawn(editor, [filePath], { detached: true });
+                opened = true;
+                break;
+              } catch (e) {
+                // 继续尝试下一个编辑器
+              }
+            }
+            
+            if (!opened) {
+              // 如果没有找到专门的编辑器，用默认程序打开
+              await shell.openPath(filePath);
+            }
+          } catch (error) {
+            console.error('在代码编辑器中打开失败:', error);
+          }
+        },
+        enabled: fileExists
+      }] : []),
+      { type: 'separator' },
+      {
+        label: '在文件管理器中显示',
+        click: () => {
+          shell.showItemInFolder(filePath);
+        },
+        enabled: fileExists
+      },
+      {
+        label: '打开文件位置',
+        click: async () => {
+          try {
+            const dirPath = path.dirname(filePath);
+            await shell.openPath(dirPath);
+          } catch (error) {
+            console.error('打开文件位置失败:', error);
+          }
+        },
+        enabled: fileExists
+      },
+      { type: 'separator' },
+      {
+        label: '重命名',
+        click: async () => {
+          try {
+            const currentName = path.basename(filePath);
+            const currentDir = path.dirname(filePath);
+            
+            const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'question',
+              title: '重命名文件',
+              message: '输入新的文件名：',
+              detail: `当前名称: ${currentName}`,
+              buttons: ['取消', '确定'],
+              defaultId: 1,
+              cancelId: 0
+            });
+
+            if (result.response === 1) {
+              // 这里应该显示一个输入框，但由于dialog限制，暂时跳过
+              // 在实际应用中，可以创建一个专门的重命名窗口
+              console.log('重命名功能需要额外的UI组件支持');
+            }
+          } catch (error) {
+            console.error('重命名失败:', error);
+          }
+        },
+        enabled: fileExists
+      },
+      { type: 'separator' },
+      {
+        label: '复制',
+        submenu: [
+          {
+            label: '复制文件路径',
+            click: () => {
+              const { clipboard } = require('electron');
+              clipboard.writeText(filePath);
+            }
+          },
+          {
+            label: '复制文件名',
+            click: () => {
+              const { clipboard } = require('electron');
+              const fileName = path.basename(filePath);
+              clipboard.writeText(fileName);
+            }
+          },
+          {
+            label: '复制文件名（不含扩展名）',
+            click: () => {
+              const { clipboard } = require('electron');
+              const fileName = path.parse(filePath).name;
+              clipboard.writeText(fileName);
+            }
+          },
+          {
+            label: '复制目录路径',
+            click: () => {
+              const { clipboard } = require('electron');
+              const dirPath = path.dirname(filePath);
+              clipboard.writeText(dirPath);
+            }
+          }
+        ]
+      },
+      {
+        label: '发送到',
+        submenu: [
+          {
+            label: '桌面快捷方式',
+            click: async () => {
+              try {
+                const os = require('os');
+                const desktopPath = path.join(os.homedir(), 'Desktop');
+                const shortcutName = `${path.parse(filePath).name}.lnk`;
+                const shortcutPath = path.join(desktopPath, shortcutName);
+                
+                // 使用shell创建快捷方式
+                await shell.writeShortcutLink(shortcutPath, {
+                  target: filePath,
+                  description: `快捷方式到 ${path.basename(filePath)}`
+                });
+                
+                await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                  type: 'info',
+                  title: '创建快捷方式',
+                  message: '快捷方式已创建到桌面',
+                  buttons: ['确定']
+                });
+              } catch (error) {
+                console.error('创建桌面快捷方式失败:', error);
+                await dialog.showErrorBox('创建失败', `无法创建快捷方式: ${error.message}`);
+              }
+            },
+            enabled: fileExists && process.platform === 'win32'
+          }
+        ]
+      },
+      { type: 'separator' },
+      {
+        label: '压缩文件',
+        click: async () => {
+          try {
+            const result = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+              title: '创建压缩文件',
+              defaultPath: `${path.parse(filePath).name}.zip`,
+              filters: [
+                { name: 'ZIP文件', extensions: ['zip'] }
+              ]
+            });
+
+            if (!result.canceled && result.filePath) {
+              // 这里需要使用压缩库，暂时提示用户
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '压缩功能',
+                message: '压缩功能暂未实现，请使用系统自带的压缩工具',
+                buttons: ['确定']
+              });
+            }
+          } catch (error) {
+            console.error('压缩文件失败:', error);
+          }
+        },
+        enabled: fileExists
+      },
+      { type: 'separator' },
+      {
+        label: '属性',
+        click: async () => {
+          try {
+            if (fileExists) {
+              const stats = fs.statSync(filePath);
+              const fileSize = stats.size;
+              const formatFileSize = (bytes) => {
+                if (bytes === 0) return '0 字节';
+                const k = 1024;
+                const sizes = ['字节', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+              };
+              
+              const fileType = isDirectory ? '文件夹' : (path.extname(filePath) || '文件');
+              const details = [
+                `类型: ${fileType}`,
+                `位置: ${path.dirname(filePath)}`,
+                `大小: ${formatFileSize(fileSize)} (${fileSize.toLocaleString()} 字节)`,
+                `创建时间: ${stats.birthtime.toLocaleString('zh-CN')}`,
+                `修改时间: ${stats.mtime.toLocaleString('zh-CN')}`,
+                `访问时间: ${stats.atime.toLocaleString('zh-CN')}`,
+                `权限: ${stats.mode.toString(8)}`
+              ].join('\n');
+              
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '文件属性',
+                message: path.basename(filePath),
+                detail: details,
+                buttons: ['确定']
+              });
+            }
+          } catch (error) {
+            console.error('获取文件属性失败:', error);
+          }
+        },
+        enabled: fileExists
+      },
+      { type: 'separator' },
+      {
+        label: '删除',
+        click: async () => {
+          try {
+            const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+              type: 'warning',
+              title: '确认删除',
+              message: `确定要删除这个${isDirectory ? '文件夹' : '文件'}吗？`,
+              detail: `名称: ${path.basename(filePath)}\n路径: ${filePath}\n\n文件将被移动到回收站。`,
+              buttons: ['取消', '删除'],
+              defaultId: 0,
+              cancelId: 0
+            });
+
+            if (result.response === 1) {
+              // 移动到回收站而不是直接删除
+              await shell.trashItem(filePath);
+              
+              // 显示成功消息
+              await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+                type: 'info',
+                title: '删除成功',
+                message: `${isDirectory ? '文件夹' : '文件'}已移动到回收站`,
+                buttons: ['确定']
+              });
+            }
+          } catch (error) {
+            console.error('删除文件失败:', error);
+            await dialog.showErrorBox('删除失败', `无法删除${isDirectory ? '文件夹' : '文件'}: ${error.message}`);
+          }
+        },
+        enabled: fileExists
+      }
+    ];
+
+    const menu = Menu.buildFromTemplate(menuTemplate);
+    menu.popup({ window: BrowserWindow.getFocusedWindow() });
+
+    return { success: true };
+  } catch (error) {
+    console.error('显示右键菜单失败:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 app.whenReady().then(() => {
