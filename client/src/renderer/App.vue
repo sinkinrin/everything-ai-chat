@@ -441,15 +441,19 @@ export default {
       });
     });
 
-    // 计算Everything连接状态的CSS类
-    const everythingStatusClass = computed(() => {
-      if (everythingTesting.value) return 'connecting';
-      return everythingConnected.value ? 'connected' : 'disconnected';
-    });
+         // 计算Everything连接状态的CSS类
+     const everythingStatusClass = computed(() => {
+       if (everythingTesting.value) return 'connecting';
+       return everythingConnected.value ? 'connected' : 'disconnected';
+     });
 
+     // 计算Everything连接状态的显示文本
+     const everythingStatusText = computed(() => {
+       if (everythingTesting.value) return '连接中';
+       return everythingConnected.value ? '已连接' : '未连接';
+     });
 
-
-    // --- 方法 ---
+     // --- 方法 ---
 
     /**
      * 执行搜索操作
@@ -951,8 +955,8 @@ export default {
       columnWidths, isDragging, dragColumn,
       // 滚动条补偿相关数据
       hasScrollbar, fileListBody,
-      // 计算属性
-      filteredHistory, sortedResults, everythingStatusClass, getHeaderStyle,
+             // 计算属性
+       filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
       // 方法
       performSearch, selectHistoryItem, navigateHistory, hideHistoryDelayed, sortBy, getSortClass,
       openFile, showFileContextMenu, exportResults, clearResults, trySuggestion,

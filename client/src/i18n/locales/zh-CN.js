@@ -128,6 +128,14 @@ export default {
       }
     },
     
+    // 调试配置
+    debug: {
+      title: '🐛 AI调试配置',
+      description: '配置AI响应的调试和诊断功能',
+      enableStream: '启用流式输出调试',
+      enableStreamHelp: '开启后，在搜索时会显示AI实时响应过程，用于调试和观察AI的工作状态'
+    },
+    
     // 系统提示词配置
     systemPrompt: {
       title: '🤖 AI 系统提示词配置',

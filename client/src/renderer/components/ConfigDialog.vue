@@ -146,6 +146,30 @@
           </div>
         </div>
 
+        <!-- AI 调试配置 -->
+        <div class="config-section">
+          <h3>{{ $t('settings.debug.title') }}</h3>
+          <p class="config-description">
+            {{ $t('settings.debug.description') }}
+          </p>
+
+          <div class="debug-config-grid">
+            <div class="debug-config-item">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  v-model="config.enableStreamDebug"
+                  @change="scheduleAutoSave"
+                />
+                <span>{{ $t('settings.debug.enableStream') }}</span>
+              </label>
+              <small class="debug-help">
+                {{ $t('settings.debug.enableStreamHelp') }}
+              </small>
+            </div>
+          </div>
+        </div>
+
         <!-- AI 系统提示词配置 -->
         <div class="config-section">
           <div class="section-header" @click="toggleSystemPromptSection">

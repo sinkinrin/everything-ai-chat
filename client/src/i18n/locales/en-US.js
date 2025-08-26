@@ -128,6 +128,14 @@ export default {
       }
     },
     
+    // Debug configuration
+    debug: {
+      title: '🐛 AI Debug Configuration',
+      description: 'Configure AI response debugging and diagnostic features',
+      enableStream: 'Enable Stream Output Debugging',
+      enableStreamHelp: 'When enabled, displays AI real-time response process during searches, useful for debugging and observing AI work status'
+    },
+    
     // System prompt configuration
     systemPrompt: {
       title: '🤖 AI System Prompt Configuration',
