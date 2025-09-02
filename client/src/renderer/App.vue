@@ -141,8 +141,10 @@
 
         <!-- 文件列表 -->
         <div class="file-list">
-          <!-- 文件列表的表头，点击可进行排序 -->
-          <div class="file-list-header" :class="{ dragging: isDragging }" :style="getHeaderStyle">
+          <!-- 表头容器，用于横向滚动同步 -->
+          <div class="file-list-header-container" ref="fileListHeader">
+            <!-- 文件列表的表头，点击可进行排序 -->
+            <div class="file-list-header" :class="{ dragging: isDragging }" :style="getHeaderStyle">
             <div @click="sortBy('name')" :class="['file-list-column', 'col-name', 'sortable', getSortClass('name')]" :style="getColumnStyle('name')">
               {{ $t('fileList.columns.name') }}
               <div class="column-resizer" @mousedown="startColumnResize('name', $event)"></div>
@@ -178,6 +180,7 @@
             </div>
             <div @click="sortBy('extension')" :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]" :style="getColumnStyle('type')">
               {{ $t('fileList.columns.type') }}
+            </div>
             </div>
           </div>
 
@@ -406,6 +409,7 @@ export default {
     // 滚动条补偿相关状态
     const hasScrollbar = ref(false);
     const fileListBody = ref(null);
+    const fileListHeader = ref(null);
 
     // --- 计算属性 ---
 
@@ -874,6 +878,42 @@ export default {
     };
 
     /**
+     * 同步表头和表体的横向滚动
+     */
+    const syncHorizontalScroll = (event) => {
+      if (fileListHeader.value && fileListBody.value) {
+        if (event.target === fileListBody.value) {
+          // 表体滚动时同步表头
+          fileListHeader.value.scrollLeft = event.target.scrollLeft;
+        } else if (event.target === fileListHeader.value) {
+          // 表头滚动时同步表体（如果需要支持表头直接滚动）
+          fileListBody.value.scrollLeft = event.target.scrollLeft;
+        }
+      }
+    };
+
+    /**
+     * 设置横向滚动同步
+     */
+    const setupScrollSync = () => {
+      nextTick(() => {
+        if (fileListBody.value) {
+          // 为表体添加滚动事件监听器
+          fileListBody.value.addEventListener('scroll', syncHorizontalScroll);
+        }
+      });
+    };
+
+    /**
+     * 清理滚动同步事件监听器
+     */
+    const cleanupScrollSync = () => {
+      if (fileListBody.value) {
+        fileListBody.value.removeEventListener('scroll', syncHorizontalScroll);
+      }
+    };
+
+    /**
      * 获取表头的样式，包含滚动条补偿
      */
     const getHeaderStyle = computed(() => {
@@ -884,9 +924,10 @@ export default {
 
     // --- 监听器 ---
     
-    // 监听搜索结果变化，检测滚动条状态
+    // 监听搜索结果变化，检测滚动条状态并重新设置滚动同步
     watch(searchResults, () => {
       checkScrollbar();
+      setupScrollSync(); // 重新设置滚动同步，确保新的DOM元素正确绑定事件
     }, { flush: 'post' });
 
     // --- 生命周期钩子 ---
@@ -908,6 +949,9 @@ export default {
       
       // 监听窗口大小变化，重新检测滚动条
       window.addEventListener('resize', handleResize);
+      
+      // 设置横向滚动同步
+      setupScrollSync();
       
       // 监听来自主进程的消息
       if (window.electronAPI?.on) {
@@ -941,6 +985,7 @@ export default {
     // 组件卸载时清理事件监听器
     onBeforeUnmount(() => {
       window.removeEventListener('resize', handleResize);
+      cleanupScrollSync(); // 清理滚动同步事件监听器
     });
 
     // 返回所有需要在模板中使用的数据和方法
@@ -954,7 +999,7 @@ export default {
       // 列宽调整相关数据
       columnWidths, isDragging, dragColumn,
       // 滚动条补偿相关数据
-      hasScrollbar, fileListBody,
+      hasScrollbar, fileListBody, fileListHeader,
              // 计算属性
        filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
       // 方法
