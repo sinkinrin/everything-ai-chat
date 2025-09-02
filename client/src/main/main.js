@@ -29,6 +29,9 @@ let everythingManager;
 // 托盘实例
 let tray;
 
+// 调试窗口实例
+let debugWindow;
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -45,11 +48,18 @@ function createWindow() {
     show: false
   });
 
+  // 存储主窗口的引用
+  global.mainWindow = mainWindow;
+
   // 窗口关闭时隐藏到托盘而不是真正关闭
   mainWindow.on('close', (event) => {
     if (tray && !app.isQuiting) {
       event.preventDefault();
       mainWindow.hide();
+      // 同时隐藏调试窗口
+      if (debugWindow && !debugWindow.isDestroyed()) {
+        debugWindow.hide();
+      }
       return false;
     }
   });
@@ -79,6 +89,129 @@ function createWindow() {
   });
 
   return mainWindow;
+}
+
+// 创建调试窗口
+function createDebugWindow() {
+  // 如果调试窗口已存在，则显示它
+  if (debugWindow && !debugWindow.isDestroyed()) {
+    debugWindow.show();
+    debugWindow.focus();
+    return debugWindow;
+  }
+
+  const mainWindow = global.mainWindow;
+  let debugWindowX = 100;
+  let debugWindowY = 100;
+  let moveTimeout = null; // 移动到函数作用域
+
+  // 如果主窗口存在，将调试窗口定位在主窗口右侧
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const [mainX, mainY] = mainWindow.getPosition();
+    const [mainWidth, mainHeight] = mainWindow.getSize();
+    debugWindowX = mainX + mainWidth + 10; // 主窗口右侧留10px间距
+    debugWindowY = mainY;
+  }
+
+  debugWindow = new BrowserWindow({
+    width: 450,
+    height: 700,
+    minWidth: 350,
+    minHeight: 500,
+    maxWidth: 600,
+    maxHeight: 900,
+    x: debugWindowX,
+    y: debugWindowY,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    titleBarStyle: 'hidden',
+    frame: false,
+    show: false,
+    resizable: true,
+    alwaysOnTop: false,
+    skipTaskbar: true, // 不在任务栏显示
+    type: 'toolbar' // 设置为工具窗口类型
+  });
+
+  // 开发环境加载Vue开发服务器，生产环境加载构建文件
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+  if (isDev) {
+    // 等待Vue开发服务器启动
+    const loadDevServer = async () => {
+      try {
+        await debugWindow.loadURL('http://127.0.0.1:5173/debug.html');
+        // 开发环境下可以打开DevTools
+        // debugWindow.webContents.openDevTools();
+      } catch (error) {
+        console.log('等待Vue开发服务器启动...');
+        setTimeout(loadDevServer, 1000);
+      }
+    };
+    loadDevServer();
+  } else {
+    // 生产环境加载调试窗口的HTML文件
+    debugWindow.loadFile(path.join(__dirname, '../../dist-vue/debug.html'));
+  }
+
+  // 窗口准备好后显示
+  debugWindow.once('ready-to-show', () => {
+    debugWindow.show();
+  });
+
+  // 窗口关闭时清理引用和事件监听器
+  debugWindow.on('closed', () => {
+    // 清理定时器
+    if (moveTimeout) {
+      clearTimeout(moveTimeout);
+      moveTimeout = null;
+    }
+    
+    // 清理主窗口的事件监听器（如果主窗口还存在）
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.removeAllListeners('move');
+      mainWindow.removeAllListeners('resize');
+    }
+    
+    debugWindow = null;
+  });
+
+  // 监听主窗口移动，同步调试窗口位置
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const syncDebugWindowPosition = () => {
+      // 使用防抖避免频繁调用
+      if (moveTimeout) {
+        clearTimeout(moveTimeout);
+      }
+      moveTimeout = setTimeout(() => {
+        if (debugWindow && !debugWindow.isDestroyed() && mainWindow && !mainWindow.isDestroyed()) {
+          const [mainX, mainY] = mainWindow.getPosition();
+          const [mainWidth] = mainWindow.getSize();
+          const newX = mainX + mainWidth + 10;
+          const newY = mainY;
+          
+          // 只在位置真的发生变化时才移动
+          const [currentX, currentY] = debugWindow.getPosition();
+          if (Math.abs(currentX - newX) > 5 || Math.abs(currentY - newY) > 5) {
+            debugWindow.setPosition(newX, newY);
+          }
+        }
+      }, 50); // 50ms防抖
+    };
+
+    // 清理可能存在的旧事件监听器
+    mainWindow.removeAllListeners('move');
+    mainWindow.on('move', syncDebugWindowPosition);
+    
+    // 监听主窗口大小变化，也需要同步调试窗口位置
+    mainWindow.removeAllListeners('resize');
+    mainWindow.on('resize', syncDebugWindowPosition);
+  }
+
+  return debugWindow;
 }
 
 // 创建托盘
@@ -131,6 +264,10 @@ function createTray() {
           }
           mainWindow.show();
           mainWindow.focus();
+          // 同时显示调试窗口（如果之前是打开的）
+          if (debugWindow && !debugWindow.isDestroyed()) {
+            debugWindow.show();
+          }
         } else {
           createWindow();
         }
@@ -185,6 +322,10 @@ function createTray() {
       }
       mainWindow.show();
       mainWindow.focus();
+      // 同时显示调试窗口（如果之前是打开的）
+      if (debugWindow && !debugWindow.isDestroyed()) {
+        debugWindow.show();
+      }
     } else {
       createWindow();
     }
@@ -933,17 +1074,23 @@ ${query}
 
         if (enableStreamDebug) {
           // 流式调用模式 - 用于调试
-          event.sender.send('ai-debug-stream', {
+          const debugData = {
             type: 'info',
             content: '🚀 开始AI转换自然语言查询...'
-          });
+          };
+          event.sender.send('ai-debug-stream', debugData);
+          // 同时发送到调试窗口
+          if (debugWindow && !debugWindow.isDestroyed()) {
+            debugWindow.webContents.send('ai-debug-stream', debugData);
+          }
 
           const aiResponse = await openai.chat.completions.create({
             model: store.get('openai.model', 'gpt-3.5-turbo'),
             messages: aiMessages,
             max_tokens: 200,
             temperature: 0.7,
-            stream: true
+            stream: true,
+            response_format: { type: "json_object" }
           });
 
           // 处理流式响应
@@ -953,17 +1100,27 @@ ${query}
             if (content) {
               fullResponse += content;
               // 发送流式调试消息
-              event.sender.send('ai-debug-stream', {
+              const debugData = {
                 type: 'stream',
                 content: content
-              });
+              };
+              event.sender.send('ai-debug-stream', debugData);
+              // 同时发送到调试窗口
+              if (debugWindow && !debugWindow.isDestroyed()) {
+                debugWindow.webContents.send('ai-debug-stream', debugData);
+              }
             }
           }
 
           // 发送完整响应结果
-          event.sender.send('ai-debug-result', {
+          const debugData2 = {
             result: fullResponse
-          });
+          };
+          event.sender.send('ai-debug-result', debugData2);
+          // 同时发送到调试窗口
+          if (debugWindow && !debugWindow.isDestroyed()) {
+            debugWindow.webContents.send('ai-debug-result', debugData2);
+          }
 
           responseContent = fullResponse.trim();
         } else {
@@ -979,9 +1136,35 @@ ${query}
           responseContent = aiResponse.choices[0].message.content.trim();
         }
 
+        // 清理响应内容，去除可能的markdown代码块标识符
+        const cleanResponseContent = (content) => {
+          // 去除可能的markdown代码块标识符
+          let cleaned = content.trim();
+          
+          // 移除开头的 "json" 或 "```json" 标识符
+          if (cleaned.startsWith('json')) {
+            cleaned = cleaned.substring(4).trim();
+          } else if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.substring(7).trim();
+          } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.substring(3).trim();
+          }
+          
+          // 移除结尾的 "```"
+          if (cleaned.endsWith('```')) {
+            cleaned = cleaned.substring(0, cleaned.length - 3).trim();
+          }
+          
+          return cleaned;
+        };
+
+        const cleanedResponseContent = cleanResponseContent(responseContent);
+        console.log('清理前响应:', responseContent);
+        console.log('清理后响应:', cleanedResponseContent);
+
         // 解析JSON响应
         try {
-          const parsedResponse = JSON.parse(responseContent);
+          const parsedResponse = JSON.parse(cleanedResponseContent);
 
           // 验证JSON结构
           if (parsedResponse.query && typeof parsedResponse.query === 'string') {
@@ -1001,31 +1184,47 @@ ${query}
         } catch (parseError) {
           console.error('解析AI响应JSON失败:', parseError);
           console.error('原始响应:', responseContent);
+          console.error('清理后响应:', cleanedResponseContent);
 
           if (enableStreamDebug) {
-            event.sender.send('ai-debug-stream', {
+            const debugData = {
               type: 'info',
               content: `JSON解析失败: ${parseError.message}`
-            });
+            };
+            event.sender.send('ai-debug-stream', debugData);
+            // 同时发送到调试窗口
+            if (debugWindow && !debugWindow.isDestroyed()) {
+              debugWindow.webContents.send('ai-debug-stream', debugData);
+            }
           }
 
           // 回退到简单文本提取
-          const fallbackMatch = responseContent.match(/"query"\s*:\s*"([^"]+)"/);
+          const fallbackMatch = cleanedResponseContent.match(/"query"\s*:\s*"([^"]+)"/);
           if (fallbackMatch) {
             everythingQuery = fallbackMatch[1].trim();
             console.log('使用回退方案提取查询:', everythingQuery);
 
             if (enableStreamDebug) {
-              event.sender.send('ai-debug-stream', {
+              const debugData = {
                 type: 'info',
                 content: `🔧 回退方案成功提取查询: ${everythingQuery}`
-              });
+              };
+              event.sender.send('ai-debug-stream', debugData);
+              // 同时发送到调试窗口
+              if (debugWindow && !debugWindow.isDestroyed()) {
+                debugWindow.webContents.send('ai-debug-stream', debugData);
+              }
             }
           } else {
             if (enableStreamDebug) {
-              event.sender.send('ai-debug-error', {
+              const debugData = {
                 error: '无法从AI响应中提取查询语句，将使用原始查询'
-              });
+              };
+              event.sender.send('ai-debug-error', debugData);
+              // 同时发送到调试窗口
+              if (debugWindow && !debugWindow.isDestroyed()) {
+                debugWindow.webContents.send('ai-debug-error', debugData);
+              }
             }
             throw new Error('无法从AI响应中提取查询语句');
           }
@@ -1034,9 +1233,14 @@ ${query}
         console.error('OpenAI转换失败:', error);
 
         if (enableStreamDebug) {
-          event.sender.send('ai-debug-error', {
+          const debugData = {
             error: `AI转换失败: ${error.message}，使用本地优化`
-          });
+          };
+          event.sender.send('ai-debug-error', debugData);
+          // 同时发送到调试窗口
+          if (debugWindow && !debugWindow.isDestroyed()) {
+            debugWindow.webContents.send('ai-debug-error', debugData);
+          }
         }
 
         // 如果OpenAI失败，使用本地优化规则
@@ -1049,10 +1253,15 @@ ${query}
 
     // 执行Everything搜索 - 新的API已经默认包含所有必要信息
     if (enableStreamDebug) {
-      event.sender.send('ai-debug-stream', {
+      const debugData = {
         type: 'info',
         content: `🔍 执行Everything搜索: ${everythingQuery}`
-      });
+      };
+      event.sender.send('ai-debug-stream', debugData);
+      // 同时发送到调试窗口
+      if (debugWindow && !debugWindow.isDestroyed()) {
+        debugWindow.webContents.send('ai-debug-stream', debugData);
+      }
     }
 
     const searchResult = await everythingSearch.search(everythingQuery, {
@@ -1060,19 +1269,29 @@ ${query}
     });
 
     if (!searchResult.success) {
-      if (enableStreamDebug) {
-        event.sender.send('ai-debug-error', {
-          error: `Everything搜索失败: ${searchResult.error || '未知错误'}`
-        });
-      }
+              if (enableStreamDebug) {
+          const debugData = {
+            error: `Everything搜索失败: ${searchResult.error || '未知错误'}`
+          };
+          event.sender.send('ai-debug-error', debugData);
+          // 同时发送到调试窗口
+          if (debugWindow && !debugWindow.isDestroyed()) {
+            debugWindow.webContents.send('ai-debug-error', debugData);
+          }
+        }
       throw new Error(searchResult.error || 'Everything搜索失败');
     }
 
     if (enableStreamDebug) {
-      event.sender.send('ai-debug-stream', {
+      const debugData = {
         type: 'info',
         content: `✅ 搜索完成，找到 ${searchResult.results?.length || 0} 个结果`
-      });
+      };
+      event.sender.send('ai-debug-stream', debugData);
+      // 同时发送到调试窗口
+      if (debugWindow && !debugWindow.isDestroyed()) {
+        debugWindow.webContents.send('ai-debug-stream', debugData);
+      }
     }
 
     // 保存搜索历史
@@ -1090,9 +1309,14 @@ ${query}
     console.error('搜索失败:', error);
 
     if (enableStreamDebug) {
-      event.sender.send('ai-debug-error', {
+      const debugData = {
         error: `搜索过程出现错误: ${error.message}`
-      });
+      };
+      event.sender.send('ai-debug-error', debugData);
+      // 同时发送到调试窗口
+      if (debugWindow && !debugWindow.isDestroyed()) {
+        debugWindow.webContents.send('ai-debug-error', debugData);
+      }
     }
 
     return {
@@ -1166,6 +1390,18 @@ ipcMain.handle('set-openai-config', async (event, config) => {
   try {
     store.set('openai', config);
     initOpenAI();
+    
+    // 通知所有窗口配置已更新
+    const allWindows = BrowserWindow.getAllWindows();
+    allWindows.forEach(window => {
+      window.webContents.send('config-updated', { type: 'openai', config });
+    });
+    
+    // 如果调试功能被关闭，关闭调试窗口
+    if (!config.enableStreamDebug && debugWindow && !debugWindow.isDestroyed()) {
+      debugWindow.close();
+    }
+    
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1956,3 +2192,77 @@ ipcMain.handle('open-download-page', async (event, downloadUrl) => {
 });
 
 // 搜索历史使用electron-store自动管理，无需手动创建目录
+
+// 调试窗口相关IPC处理器
+ipcMain.handle('open-debug-window', async () => {
+  try {
+    const window = createDebugWindow();
+    return { success: true };
+  } catch (error) {
+    console.error('打开调试窗口失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('close-debug-window', async () => {
+  try {
+    if (debugWindow && !debugWindow.isDestroyed()) {
+      debugWindow.close();
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('关闭调试窗口失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-debug-window-always-on-top', async (event, alwaysOnTop) => {
+  try {
+    if (debugWindow && !debugWindow.isDestroyed()) {
+      debugWindow.setAlwaysOnTop(alwaysOnTop);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('设置调试窗口置顶失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-debug-log', async (event, logContent) => {
+  try {
+    const { dialog } = require('electron');
+    const fs = require('fs');
+
+    const result = await dialog.showSaveDialog(debugWindow || BrowserWindow.getFocusedWindow(), {
+      title: '保存调试日志',
+      defaultPath: `debug-log-${new Date().toISOString().slice(0, 10)}.txt`,
+      filters: [
+        { name: '文本文件', extensions: ['txt'] },
+        { name: '日志文件', extensions: ['log'] }
+      ]
+    });
+
+    if (result.canceled) {
+      return { success: false, error: '用户取消保存' };
+    }
+
+    fs.writeFileSync(result.filePath, logContent, 'utf8');
+    return { success: true, filePath: result.filePath };
+  } catch (error) {
+    console.error('保存调试日志失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 清空调试输出
+ipcMain.handle('clear-debug-output', async () => {
+  try {
+    if (debugWindow && !debugWindow.isDestroyed()) {
+      debugWindow.webContents.send('clear-debug-output');
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('清空调试输出失败:', error);
+    return { success: false, error: error.message };
+  }
+});

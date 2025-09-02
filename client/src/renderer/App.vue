@@ -64,48 +64,20 @@
       </div>
     </div>
 
-    <!-- AI调试输出区域 -->
-    <div v-if="showDebugPanel" class="debug-section">
-      <div class="debug-header">
-        <h3>🤖 AI响应调试</h3>
-        <div class="debug-controls">
-          <button @click="clearDebugOutput" class="debug-clear-button" title="清空调试输出">
-            <span>🗑️</span>
-          </button>
-          <button @click="toggleDebugPanel" class="debug-toggle-button" title="隐藏调试面板">
-            <span>−</span>
-          </button>
-        </div>
+    <!-- 调试窗口控制区域 -->
+    <div v-if="debugConfig.enableStreamDebug" class="debug-controls-bar">
+      <div class="debug-info">
+        <span class="debug-status">🤖 AI响应调试</span>
       </div>
-      <div class="debug-content" ref="debugContent">
-        <div v-if="debugMessages.length === 0" class="debug-empty">
-          <div class="debug-empty-icon">🔍</div>
-          <div class="debug-empty-text">等待AI响应...</div>
-          <div class="debug-empty-subtext">执行搜索后这里会显示AI的实时响应过程</div>
-        </div>
-        <div v-else class="debug-messages">
-          <div
-            v-for="(message, index) in debugMessages"
-            :key="index"
-            :class="['debug-message', `debug-${message.type}`]"
-          >
-            <div class="debug-timestamp">{{ formatDebugTime(message.timestamp) }}</div>
-            <div class="debug-message-content">
-              <div v-if="message.type === 'stream'" class="debug-stream-chunk">
-                {{ message.content }}
-              </div>
-              <div v-else-if="message.type === 'result'" class="debug-result">
-                <strong>转换结果:</strong> {{ message.content }}
-              </div>
-              <div v-else-if="message.type === 'error'" class="debug-error">
-                <strong>错误:</strong> {{ message.content }}
-              </div>
-              <div v-else class="debug-info">
-                {{ message.content }}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="debug-actions">
+        <button @click="openDebugWindow" class="debug-action-button" title="打开调试窗口">
+          <span class="button-icon">📊</span>
+          打开调试窗口
+        </button>
+        <button @click="clearDebugOutput" class="debug-action-button" title="清空调试输出">
+          <span class="button-icon">🗑️</span>
+          清空
+        </button>
       </div>
     </div>
 
@@ -428,9 +400,6 @@ export default {
     const searchInput = ref(null); // 对输入框DOM元素的引用
 
     // 调试相关状态
-    const showDebugPanel = ref(false); // 是否显示调试面板
-    const debugMessages = ref([]); // 调试消息列表
-    const debugContent = ref(null); // 调试内容容器的引用
     const debugConfig = ref({ enableStreamDebug: false }); // 调试配置
 
     // 列宽调整相关状态
@@ -523,10 +492,9 @@ export default {
       searchStartTime.value = Date.now();
       searchResults.value = []; // 立即清空旧结果，以触发加载状态
 
-      // 调试模式：添加搜索开始消息
+      // 调试模式：先清空旧的调试输出
       if (debugConfig.value.enableStreamDebug) {
         clearDebugOutput();
-        addDebugMessage('info', `开始搜索: "${query}"`);
       }
 
       try {
@@ -760,54 +728,33 @@ export default {
     // --- 调试相关方法 ---
 
     /**
-     * 添加调试消息
+     * 打开调试窗口
      */
-    const addDebugMessage = (type, content) => {
-      debugMessages.value.push({
-        type,
-        content,
-        timestamp: Date.now()
-      });
-
-      // 自动滚动到底部
-      nextTick(() => {
-        if (debugContent.value) {
-          debugContent.value.scrollTop = debugContent.value.scrollHeight;
+    const openDebugWindow = async () => {
+      try {
+        const result = await window.electronAPI.openDebugWindow();
+        if (!result.success) {
+          console.error('打开调试窗口失败:', result.error);
         }
-      });
-
-      // 限制消息数量，避免内存溢出
-      if (debugMessages.value.length > 200) {
-        debugMessages.value.splice(0, debugMessages.value.length - 200);
+      } catch (error) {
+        console.error('打开调试窗口失败:', error);
       }
     };
 
     /**
      * 清空调试输出
      */
-    const clearDebugOutput = () => {
-      debugMessages.value = [];
+    const clearDebugOutput = async () => {
+      try {
+        await window.electronAPI.clearDebugOutput();
+      } catch (error) {
+        console.error('清空调试输出失败:', error);
+      }
     };
 
-    /**
-     * 切换调试面板显示/隐藏
-     */
-    const toggleDebugPanel = () => {
-      showDebugPanel.value = !showDebugPanel.value;
-    };
 
-    /**
-     * 格式化调试时间戳
-     */
-    const formatDebugTime = (timestamp) => {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString('zh-CN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        fractionalSecondDigits: 3
-      });
-    };
+
+
 
     /**
      * 加载调试配置
@@ -819,8 +766,7 @@ export default {
           enableStreamDebug: config.enableStreamDebug || false
         };
 
-        // 根据配置显示或隐藏调试面板
-        showDebugPanel.value = debugConfig.value.enableStreamDebug;
+        // 调试配置已加载
       } catch (error) {
         console.error('加载调试配置失败:', error);
       }
@@ -1142,24 +1088,14 @@ export default {
           showConfigDialog.value = true;
         });
 
-        // 监听AI调试流式输出
-        window.electronAPI.on('ai-debug-stream', (data) => {
-          if (debugConfig.value.enableStreamDebug) {
-            addDebugMessage(data.type || 'stream', data.content || '');
-          }
-        });
+        // 调试相关事件已移动到独立的调试窗口中处理
 
-        // 监听AI调试结果
-        window.electronAPI.on('ai-debug-result', (data) => {
-          if (debugConfig.value.enableStreamDebug) {
-            addDebugMessage('result', data.result || '');
-          }
-        });
-
-        // 监听AI调试错误
-        window.electronAPI.on('ai-debug-error', (data) => {
-          if (debugConfig.value.enableStreamDebug) {
-            addDebugMessage('error', data.error || '');
+        // 监听配置更新事件
+        window.electronAPI.on('config-updated', (data) => {
+          console.log('收到配置更新通知:', data);
+          if (data.type === 'openai') {
+            // 重新加载调试配置
+            loadDebugConfig();
           }
         });
 
@@ -1197,7 +1133,7 @@ export default {
       showHistory, historySelectedIndex, showConfigDialog, lastSearchQuery, lastEverythingQuery,
       searchInput, displayFields, everythingConnected, everythingTesting, isMaximized, searchDuration,
       // 调试相关数据
-      showDebugPanel, debugMessages, debugContent, debugConfig,
+      debugConfig,
       // 列宽调整相关数据
       columnWidths, isDragging, dragColumn,
       // 滚动条补偿相关数据
@@ -1211,7 +1147,7 @@ export default {
       openFile, showFileContextMenu, exportResults, clearResults, trySuggestion,
       minimizeWindow, toggleMaximize, closeWindow, checkEverythingStatus,
       // 调试相关方法
-      addDebugMessage, clearDebugOutput, toggleDebugPanel, formatDebugTime, loadDebugConfig,
+      openDebugWindow, clearDebugOutput, loadDebugConfig,
       // 列宽调整方法
       startColumnResize, getColumnStyle,
       // 滚动条检测方法
@@ -1224,3 +1160,51 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+/* 调试控制栏样式 */
+.debug-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 8px;
+}
+
+.debug-info .debug-status {
+  color: #495057;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.debug-action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #0d6efd;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.debug-action-button:hover {
+  background: #0b5ed7;
+  transform: translateY(-1px);
+}
+
+.debug-action-button .button-icon {
+  font-size: 14px;
+}
+</style>

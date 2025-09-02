@@ -51,9 +51,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCurrentVersion: () => ipcRenderer.invoke('get-current-version'),
   openDownloadPage: (downloadUrl) => ipcRenderer.invoke('open-download-page', downloadUrl),
   
+  // 调试窗口相关API
+  openDebugWindow: () => ipcRenderer.invoke('open-debug-window'),
+  closeDebugWindow: () => ipcRenderer.invoke('close-debug-window'),
+  setAlwaysOnTop: (alwaysOnTop) => ipcRenderer.invoke('set-debug-window-always-on-top', alwaysOnTop),
+  saveDebugLog: (logContent) => ipcRenderer.invoke('save-debug-log', logContent),
+  clearDebugOutput: () => ipcRenderer.invoke('clear-debug-output'),
+  
   // 监听来自主进程的消息
   on: (channel, func) => {
-    const validChannels = ['open-settings', 'ai-debug-stream', 'ai-debug-result', 'ai-debug-error', 'update-available'];
+    const validChannels = ['open-settings', 'ai-debug-stream', 'ai-debug-result', 'ai-debug-error', 'clear-debug-output', 'update-available', 'config-updated'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => {
         console.log(`preload.js: 收到 ${channel} 事件，数据:`, ...args);

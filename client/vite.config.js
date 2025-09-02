@@ -9,6 +9,12 @@ export default defineConfig({
   build: {
     outDir: '../../dist-vue',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'src/renderer/index.html'),
+        debug: path.resolve(__dirname, 'src/renderer/debug.html')
+      },
+    },
   },
   resolve: {
     alias: {
