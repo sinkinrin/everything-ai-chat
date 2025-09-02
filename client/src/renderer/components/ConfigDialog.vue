@@ -590,9 +590,9 @@ Everything搜索语法规则：
         const savedConfig = await window.electronAPI.getOpenAIConfig();
         if (savedConfig) {
           Object.assign(config, savedConfig);
-          // 如果没有保存的系统提示词，则使用默认值
+          // 如果没有保存的系统提示词，则显示默认提示词
           if (!config.systemPrompt) {
-            config.systemPrompt = '';
+            config.systemPrompt = defaultSystemPrompt;
           }
         }
       } catch (error) {
