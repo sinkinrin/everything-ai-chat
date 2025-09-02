@@ -4,6 +4,7 @@ const Store = require('electron-store');
 const OpenAI = require('openai');
 const EverythingSearch = require('./everything-search');
 const EverythingManager = require('./everything-manager');
+const axios = require('axios');
 
 // 初始化配置存储
 const store = new Store();
@@ -43,7 +44,7 @@ function createWindow() {
     frame: false,
     show: false
   });
-  
+
   // 窗口关闭时隐藏到托盘而不是真正关闭
   mainWindow.on('close', (event) => {
     if (tray && !app.isQuiting) {
@@ -76,7 +77,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-  
+
   return mainWindow;
 }
 
@@ -85,7 +86,7 @@ function createTray() {
   // 创建托盘图标，使用应用程序logo
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   let iconPath;
-  
+
   if (isDev) {
     // 开发环境：从源码目录加载图标
     iconPath = path.join(__dirname, '../asserts/logo.png');
@@ -93,7 +94,7 @@ function createTray() {
     // 生产环境：从资源目录加载图标
     iconPath = path.join(process.resourcesPath, 'app.asar', 'src', 'asserts', 'logo.png');
   }
-  
+
   // 创建图标，如果文件不存在则使用默认图标
   let icon;
   try {
@@ -113,9 +114,9 @@ function createTray() {
       buffer: Buffer.alloc(16 * 16 * 4, 0x80) // 创建一个灰色的16x16图标
     });
   }
-  
+
   tray = new Tray(icon);
-  
+
   // 创建托盘菜单
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -167,13 +168,13 @@ function createTray() {
       }
     }
   ]);
-  
+
   // 设置托盘菜单
   tray.setContextMenu(contextMenu);
-  
+
   // 设置托盘提示
   tray.setToolTip('Everything AI Chat');
-  
+
   // 托盘图标双击事件
   tray.on('double-click', () => {
     const windows = BrowserWindow.getAllWindows();
@@ -191,6 +192,137 @@ function createTray() {
 }
 
 // 初始化搜索历史存储（使用electron-store，无需单独初始化）
+
+// 自动更新相关功能
+class AutoUpdater {
+  constructor() {
+    this.currentVersion = this.getCurrentVersion();
+    this.githubRepo = 'MaskerPRC/everything-ai-chat'; // 请替换为实际的GitHub仓库
+  }
+
+  // 获取当前版本
+  getCurrentVersion() {
+    const packageJson = require('../../package.json');
+    return packageJson.version;
+  }
+
+  // 比较版本号
+  compareVersions(version1, version2) {
+    const v1parts = version1.split('.').map(Number);
+    const v2parts = version2.split('.').map(Number);
+
+    // 确保版本号长度相同
+    const maxLength = Math.max(v1parts.length, v2parts.length);
+    while (v1parts.length < maxLength) v1parts.push(0);
+    while (v2parts.length < maxLength) v2parts.push(0);
+
+    for (let i = 0; i < maxLength; i++) {
+      if (v1parts[i] > v2parts[i]) return 1;
+      if (v1parts[i] < v2parts[i]) return -1;
+    }
+    return 0;
+  }
+
+  // 检查GitHub releases
+  async checkForUpdates() {
+    try {
+      console.log(`检查更新 - 当前版本: ${this.currentVersion}`);
+
+      const response = await axios.get(
+        `https://api.github.com/repos/${this.githubRepo}/releases/latest`,
+        {
+          timeout: 10000, // 10秒超时
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Everything-AI-Chat-App'
+          }
+        }
+      );
+
+      const latestRelease = response.data;
+      const latestVersion = latestRelease.tag_name.replace(/^v/, ''); // 移除可能的v前缀
+
+      console.log(`最新版本: ${latestVersion}`);
+
+      // 比较版本
+      const comparison = this.compareVersions(latestVersion, this.currentVersion);
+
+      if (comparison > 0) {
+        // 发现新版本
+        console.log('发现新版本:', latestVersion);
+
+        const updateInfo = {
+          hasUpdate: true,
+          currentVersion: this.currentVersion,
+          latestVersion: latestVersion,
+          releaseNotes: latestRelease.body || '',
+          downloadUrl: latestRelease.html_url,
+          publishedAt: latestRelease.published_at,
+          assets: latestRelease.assets || []
+        };
+
+        // 发送更新通知到所有窗口
+        const allWindows = BrowserWindow.getAllWindows();
+        console.log(`发送更新通知到 ${allWindows.length} 个窗口`);
+        allWindows.forEach((window, index) => {
+          console.log(`发送更新通知到窗口 ${index + 1}`);
+          window.webContents.send('update-available', updateInfo);
+        });
+
+        return updateInfo;
+      } else {
+        console.log('当前已是最新版本');
+        return {
+          hasUpdate: false,
+          currentVersion: this.currentVersion,
+          latestVersion: latestVersion
+        };
+      }
+    } catch (error) {
+      console.error('检查更新失败:', error.message);
+
+      // 如果是网络错误，静默处理
+      if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+        console.log('网络连接问题，跳过此次更新检查');
+        return { hasUpdate: false, error: 'network_error' };
+      }
+
+      return { hasUpdate: false, error: error.message };
+    }
+  }
+
+  // 启动时检查更新
+  async checkOnStartup() {
+    // 延迟5秒后检查，确保渲染进程完全加载
+    setTimeout(async () => {
+      console.log('开始启动时更新检查...');
+      const allWindows = BrowserWindow.getAllWindows();
+      console.log('当前窗口数量:', allWindows.length);
+      
+      if (allWindows.length === 0) {
+        console.log('没有可用的窗口，延迟2秒后重试...');
+        setTimeout(() => this.checkOnStartup(), 2000);
+        return;
+      }
+      
+      // 确保窗口内容已经加载完成
+      const mainWindow = allWindows[0];
+      if (!mainWindow.webContents.isLoading()) {
+        console.log('窗口内容已加载，开始检查更新');
+        await this.checkForUpdates();
+      } else {
+        console.log('窗口内容仍在加载中，等待加载完成...');
+        mainWindow.webContents.once('did-finish-load', async () => {
+          console.log('窗口加载完成，开始检查更新');
+          await this.checkForUpdates();
+        });
+      }
+    }, 5000);
+  }
+}
+
+// 创建自动更新实例
+const autoUpdater = new AutoUpdater();
 
 // 初始化OpenAI
 function initOpenAI() {
@@ -881,7 +1013,7 @@ ${query}
           if (fallbackMatch) {
             everythingQuery = fallbackMatch[1].trim();
             console.log('使用回退方案提取查询:', everythingQuery);
-            
+
             if (enableStreamDebug) {
               event.sender.send('ai-debug-stream', {
                 type: 'info',
@@ -899,13 +1031,13 @@ ${query}
         }
       } catch (error) {
         console.error('OpenAI转换失败:', error);
-        
+
         if (enableStreamDebug) {
           event.sender.send('ai-debug-error', {
             error: `AI转换失败: ${error.message}，使用本地优化`
           });
         }
-        
+
         // 如果OpenAI失败，使用本地优化规则
         everythingQuery = everythingSearch.optimizeQuery(query);
       }
@@ -921,7 +1053,7 @@ ${query}
         content: `🔍 执行Everything搜索: ${everythingQuery}`
       });
     }
-    
+
     const searchResult = await everythingSearch.search(everythingQuery, {
       count: 1000
     });
@@ -955,13 +1087,13 @@ ${query}
 
   } catch (error) {
     console.error('搜索失败:', error);
-    
+
     if (enableStreamDebug) {
       event.sender.send('ai-debug-error', {
         error: `搜索过程出现错误: ${error.message}`
       });
     }
-    
+
     return {
       success: false,
       error: error.message
@@ -1197,27 +1329,27 @@ ipcMain.handle('get-everything-config', async () => {
 ipcMain.handle('set-everything-port-config', async (event, config) => {
   try {
     console.log('保存端口配置:', config);
-    
+
     // 验证配置
     if (!config || !config.portMode) {
       return { success: false, error: '端口配置无效' };
     }
-    
+
     if (config.portMode === 'fixed') {
       const fixedPort = config.fixedPort;
       if (!fixedPort || fixedPort < 1 || fixedPort > 65535) {
         return { success: false, error: '固定端口号无效，必须在1-65535之间' };
       }
     }
-    
+
     // 保存端口配置
     store.set('everything.portConfig', {
       portMode: config.portMode,
       fixedPort: config.fixedPort || null
     });
-    
+
     console.log('端口配置已保存:', store.get('everything.portConfig'));
-    
+
     return { success: true };
   } catch (error) {
     console.error('保存端口配置失败:', error);
@@ -1284,7 +1416,7 @@ ipcMain.handle('export-results', async (event, results) => {
           escapeCSV(file.extension || '')
         ].join(',');
       }).join('\n');
-      
+
       content = csvHeader + csvRows;
     }
 
@@ -1318,11 +1450,11 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
     const fileExists = fs.existsSync(filePath);
     const isFile = fileExists ? fs.statSync(filePath).isFile() : true;
     const isDirectory = fileExists ? fs.statSync(filePath).isDirectory() : false;
-    
+
     // 获取文件扩展名和类型
     const fileExt = path.extname(filePath).toLowerCase();
     const fileName = path.basename(filePath);
-    
+
     // 文件类型判断
     const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff'].includes(fileExt);
     const isAudio = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'].includes(fileExt);
@@ -1332,7 +1464,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
     const isArchive = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'].includes(fileExt);
     const isExecutable = ['.exe', '.msi', '.bat', '.cmd', '.com'].includes(fileExt);
     const isCode = ['.js', '.ts', '.html', '.css', '.py', '.java', '.cpp', '.c', '.php', '.go', '.rs', '.vue', '.jsx', '.tsx'].includes(fileExt);
-    
+
     const menuTemplate = [
       {
         label: '打开',
@@ -1379,7 +1511,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
               const { spawn } = require('child_process');
               spawn('reg', ['add', 'HKCU\\Control Panel\\Desktop', '/v', 'Wallpaper', '/t', 'REG_SZ', '/d', filePath, '/f'], { shell: true });
               spawn('RUNDLL32.EXE', ['user32.dll,UpdatePerUserSystemParameters'], { shell: true });
-              
+
               await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
                 type: 'info',
                 title: '设置壁纸',
@@ -1417,7 +1549,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
         },
         enabled: fileExists
       }] : []),
-      // 音频文件特定功能  
+      // 音频文件特定功能
       ...(isAudio ? [{
         label: '播放',
         click: async () => {
@@ -1481,7 +1613,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
         click: async () => {
           try {
             await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
-              type: 'info', 
+              type: 'info',
               title: '解压缩',
               message: '解压缩功能暂未实现',
               detail: '请使用系统自带的解压工具或第三方解压软件。',
@@ -1523,7 +1655,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
             // 尝试用常见的代码编辑器打开
             const editors = ['code', 'notepad++', 'sublime_text', 'atom'];
             let opened = false;
-            
+
             for (const editor of editors) {
               try {
                 const { spawn } = require('child_process');
@@ -1534,7 +1666,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
                 // 继续尝试下一个编辑器
               }
             }
-            
+
             if (!opened) {
               // 如果没有找到专门的编辑器，用默认程序打开
               await shell.openPath(filePath);
@@ -1572,7 +1704,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
           try {
             const currentName = path.basename(filePath);
             const currentDir = path.dirname(filePath);
-            
+
             const result = await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
               type: 'question',
               title: '重命名文件',
@@ -1642,13 +1774,13 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
                 const desktopPath = path.join(os.homedir(), 'Desktop');
                 const shortcutName = `${path.parse(filePath).name}.lnk`;
                 const shortcutPath = path.join(desktopPath, shortcutName);
-                
+
                 // 使用shell创建快捷方式
                 await shell.writeShortcutLink(shortcutPath, {
                   target: filePath,
                   description: `快捷方式到 ${path.basename(filePath)}`
                 });
-                
+
                 await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
                   type: 'info',
                   title: '创建快捷方式',
@@ -1707,7 +1839,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
               };
-              
+
               const fileType = isDirectory ? '文件夹' : (path.extname(filePath) || '文件');
               const details = [
                 `类型: ${fileType}`,
@@ -1718,7 +1850,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
                 `访问时间: ${stats.atime.toLocaleString('zh-CN')}`,
                 `权限: ${stats.mode.toString(8)}`
               ].join('\n');
-              
+
               await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
                 type: 'info',
                 title: '文件属性',
@@ -1751,7 +1883,7 @@ ipcMain.handle('show-file-context-menu', async (event, filePath) => {
             if (result.response === 1) {
               // 移动到回收站而不是直接删除
               await shell.trashItem(filePath);
-              
+
               // 显示成功消息
               await dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
                 type: 'info',
@@ -1786,6 +1918,9 @@ app.whenReady().then(() => {
   createTray();
   createWindow();
 
+  // 启动时检查更新
+  autoUpdater.checkOnStartup();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -1797,6 +1932,25 @@ app.on('window-all-closed', () => {
   // 如果有托盘，不退出应用，保持在后台运行
   if (process.platform !== 'darwin' && !tray) {
     app.quit();
+  }
+});
+
+// 自动更新IPC处理器
+ipcMain.handle('check-for-updates', async () => {
+  return await autoUpdater.checkForUpdates();
+});
+
+ipcMain.handle('get-current-version', () => {
+  return autoUpdater.currentVersion;
+});
+
+ipcMain.handle('open-download-page', async (event, downloadUrl) => {
+  try {
+    await shell.openExternal(downloadUrl);
+    return { success: true };
+  } catch (error) {
+    console.error('打开下载页面失败:', error);
+    return { success: false, error: error.message };
   }
 });
 

@@ -84,9 +84,9 @@
           <div class="debug-empty-subtext">执行搜索后这里会显示AI的实时响应过程</div>
         </div>
         <div v-else class="debug-messages">
-          <div 
-            v-for="(message, index) in debugMessages" 
-            :key="index" 
+          <div
+            v-for="(message, index) in debugMessages"
+            :key="index"
             :class="['debug-message', `debug-${message.type}`]"
           >
             <div class="debug-timestamp">{{ formatDebugTime(message.timestamp) }}</div>
@@ -223,7 +223,7 @@
           <div class="success-icon">✅</div>
           <div class="success-message">{{ showSuccessMessage }}</div>
         </div>
-        
+
         <!-- 状态1: 显示错误信息 -->
         <div v-else-if="errorMessage" class="error-state">
           <div class="error-icon">⚠️</div>
@@ -258,6 +258,50 @@
               <span class="suggestion-item" @click="trySuggestion($t('search.suggestions.recent_docs'))">{{ $t('search.suggestions.recent_docs') }}</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 更新通知弹窗 -->
+    <div v-if="showUpdateNotification && updateInfo" class="update-notification">
+      <div class="update-notification-content">
+        <div class="update-header">
+          <div class="update-icon">🚀</div>
+          <div class="update-title">发现新版本</div>
+          <button @click="closeUpdateNotification" class="update-close-btn">×</button>
+        </div>
+        <div class="update-body">
+          <div class="update-version-info">
+            <div class="version-line">
+              <span class="version-label">当前版本:</span>
+              <span class="version-current">v{{ updateInfo.currentVersion }}</span>
+            </div>
+            <div class="version-line">
+              <span class="version-label">最新版本:</span>
+              <span class="version-latest">v{{ updateInfo.latestVersion }}</span>
+            </div>
+          </div>
+          <div v-if="updateInfo.releaseNotes" class="update-notes">
+            <div class="notes-title">更新内容:</div>
+            <div class="notes-content">{{ updateInfo.releaseNotes.substring(0, 200) }}{{ updateInfo.releaseNotes.length > 200 ? '...' : '' }}</div>
+          </div>
+        </div>
+        <div class="update-actions">
+          <button @click="downloadUpdate" class="update-btn primary">
+            <span class="btn-icon">⬇️</span>
+            立即下载
+          </button>
+          <button @click="remindLater" class="update-btn secondary">
+            <span class="btn-icon">⏰</span>
+            稍后提醒
+          </button>
+          <button @click="ignoreVersion" class="update-btn tertiary">
+            <span class="btn-icon">✖️</span>
+            忽略
+          </button>
+        </div>
+        <div class="update-publish-time" v-if="updateInfo.publishedAt">
+          发布时间: {{ new Date(updateInfo.publishedAt).toLocaleDateString('zh-CN') }}
         </div>
       </div>
     </div>
@@ -337,7 +381,7 @@ const getFileIcon = (extension) => {
     'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️', 'ico': '🖼️',
     // 视频类型
     'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'webm': '🎬',
-    // 音频类型 
+    // 音频类型
     'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵', 'm4a': '🎵',
     // 压缩文件
     'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
@@ -382,17 +426,17 @@ export default {
     });
     const sortState = reactive({ field: 'name', direction: 'asc' }); // 排序状态
     const searchInput = ref(null); // 对输入框DOM元素的引用
-    
+
     // 调试相关状态
     const showDebugPanel = ref(false); // 是否显示调试面板
     const debugMessages = ref([]); // 调试消息列表
     const debugContent = ref(null); // 调试内容容器的引用
     const debugConfig = ref({ enableStreamDebug: false }); // 调试配置
-    
+
     // 列宽调整相关状态
     const columnWidths = ref({
       name: 240,
-      path: 320, 
+      path: 320,
       size: 100,
       modified: 140,
       type: 90,
@@ -405,11 +449,16 @@ export default {
     const dragColumn = ref('');
     const dragStartX = ref(0);
     const dragStartWidth = ref(0);
-    
+
     // 滚动条补偿相关状态
     const hasScrollbar = ref(false);
     const fileListBody = ref(null);
     const fileListHeader = ref(null);
+
+    // 自动更新相关状态
+    const updateInfo = ref(null); // 更新信息
+    const showUpdateNotification = ref(false); // 显示更新通知
+    const currentVersion = ref(''); // 当前版本
 
     // --- 计算属性 ---
 
@@ -487,7 +536,7 @@ export default {
           searchResults.value = results;
           lastEverythingQuery.value = result.everythingQuery || query;
           searchDuration.value = Date.now() - searchStartTime.value;
-          
+
           // 如果搜索结果为空，设置一个延时后自动清空搜索内容
           if (results.length === 0) {
             setTimeout(() => {
@@ -499,7 +548,7 @@ export default {
               }
             }, 3000); // 3秒后自动清空
           }
-          
+
           await loadSearchHistory(); // 成功后刷新历史记录
         } else {
           errorMessage.value = result.error || '搜索失败，未知错误。';
@@ -620,7 +669,7 @@ export default {
         event.preventDefault();
         event.stopPropagation();
       }
-      
+
       // 调用 Electron 显示自定义右键菜单
       window.electronAPI?.showFileContextMenu(file.path);
     };
@@ -709,7 +758,7 @@ export default {
     };
 
     // --- 调试相关方法 ---
-    
+
     /**
      * 添加调试消息
      */
@@ -719,14 +768,14 @@ export default {
         content,
         timestamp: Date.now()
       });
-      
+
       // 自动滚动到底部
       nextTick(() => {
         if (debugContent.value) {
           debugContent.value.scrollTop = debugContent.value.scrollHeight;
         }
       });
-      
+
       // 限制消息数量，避免内存溢出
       if (debugMessages.value.length > 200) {
         debugMessages.value.splice(0, debugMessages.value.length - 200);
@@ -769,7 +818,7 @@ export default {
         debugConfig.value = {
           enableStreamDebug: config.enableStreamDebug || false
         };
-        
+
         // 根据配置显示或隐藏调试面板
         showDebugPanel.value = debugConfig.value.enableStreamDebug;
       } catch (error) {
@@ -786,10 +835,10 @@ export default {
       dragColumn.value = columnName;
       dragStartX.value = event.clientX;
       dragStartWidth.value = columnWidths.value[columnName];
-      
+
       // 添加全局拖拽样式
       document.body.classList.add('column-resizing');
-      
+
       document.addEventListener('mousemove', handleColumnResize);
       document.addEventListener('mouseup', stopColumnResize);
       event.preventDefault();
@@ -801,10 +850,10 @@ export default {
      */
     const handleColumnResize = (event) => {
       if (!isDragging.value) return;
-      
+
       const deltaX = event.clientX - dragStartX.value;
       const newWidth = Math.max(60, dragStartWidth.value + deltaX);
-      
+
       columnWidths.value[dragColumn.value] = newWidth;
     };
 
@@ -818,10 +867,10 @@ export default {
         // 保存列宽设置到localStorage
         saveColumnWidths();
       }
-      
+
       // 移除全局拖拽样式
       document.body.classList.remove('column-resizing');
-      
+
       document.removeEventListener('mousemove', handleColumnResize);
       document.removeEventListener('mouseup', stopColumnResize);
     };
@@ -922,8 +971,140 @@ export default {
       };
     });
 
+    // --- 自动更新相关方法 ---
+
+    /**
+     * 处理更新通知
+     */
+    const handleUpdateNotification = (data) => {
+      console.log('处理更新通知，数据:', data);
+      if (data.hasUpdate) {
+        console.log('设置更新信息并显示通知');
+        updateInfo.value = data;
+        showUpdateNotification.value = true;
+        console.log('showUpdateNotification.value 设置为:', showUpdateNotification.value);
+        console.log('updateInfo.value 设置为:', updateInfo.value);
+      } else {
+        console.log('数据中 hasUpdate 为 false');
+      }
+    };
+
+    /**
+     * 关闭更新通知
+     */
+    const closeUpdateNotification = () => {
+      showUpdateNotification.value = false;
+    };
+
+    /**
+     * 立即下载更新
+     */
+    const downloadUpdate = async () => {
+      if (updateInfo.value?.downloadUrl) {
+        try {
+          await window.electronAPI.openDownloadPage(updateInfo.value.downloadUrl);
+          closeUpdateNotification();
+        } catch (error) {
+          console.error('打开下载页面失败:', error);
+        }
+      }
+    };
+
+    /**
+     * 稍后提醒
+     */
+    const remindLater = () => {
+      closeUpdateNotification();
+      // 30分钟后再次显示
+      setTimeout(() => {
+        if (updateInfo.value?.hasUpdate) {
+          showUpdateNotification.value = true;
+        }
+      }, 30 * 60 * 1000); // 30分钟
+    };
+
+    /**
+     * 忽略此版本
+     */
+    const ignoreVersion = () => {
+      if (updateInfo.value?.latestVersion) {
+        // 将忽略的版本号保存到本地存储
+        try {
+          localStorage.setItem('ignored-version', updateInfo.value.latestVersion);
+        } catch (error) {
+          console.error('保存忽略版本失败:', error);
+        }
+      }
+      closeUpdateNotification();
+    };
+
+    /**
+     * 检查是否应该显示更新通知
+     */
+    const shouldShowUpdateNotification = (version) => {
+      try {
+        const ignoredVersion = localStorage.getItem('ignored-version');
+        console.log('忽略的版本:', ignoredVersion, '当前版本:', version);
+        const result = !ignoredVersion || ignoredVersion !== version;
+        console.log('shouldShowUpdateNotification 结果:', result);
+        return result;
+      } catch (error) {
+        console.error('检查更新通知显示状态失败:', error);
+        return true;
+      }
+    };
+
+    /**
+     * 获取当前版本号
+     */
+    const loadCurrentVersion = async () => {
+      try {
+        currentVersion.value = await window.electronAPI.getCurrentVersion();
+        console.log('当前版本:', currentVersion.value);
+      } catch (error) {
+        console.error('获取当前版本失败:', error);
+      }
+    };
+
+    /**
+     * 手动检查更新（用于调试）
+     */
+    const manualCheckForUpdates = async () => {
+      try {
+        console.log('手动触发检查更新...');
+        const result = await window.electronAPI.checkForUpdates();
+        console.log('手动检查更新结果:', result);
+        if (result.hasUpdate) {
+          handleUpdateNotification(result);
+        }
+      } catch (error) {
+        console.error('手动检查更新失败:', error);
+      }
+    };
+
+    // 在开发环境下暴露到全局，方便调试
+    if (process.env.NODE_ENV === 'development') {
+      window.debugUpdateNotification = {
+        manualCheck: manualCheckForUpdates,
+        showNotification: () => {
+          updateInfo.value = {
+            hasUpdate: true,
+            currentVersion: '1.0.0',
+            latestVersion: '2.0.0',
+            releaseNotes: '这是一个测试更新通知',
+            downloadUrl: 'https://github.com',
+            publishedAt: new Date().toISOString()
+          };
+          showUpdateNotification.value = true;
+        },
+        hideNotification: () => {
+          showUpdateNotification.value = false;
+        }
+      };
+    }
+
     // --- 监听器 ---
-    
+
     // 监听搜索结果变化，检测滚动条状态并重新设置滚动同步
     watch(searchResults, () => {
       checkScrollbar();
@@ -931,12 +1112,12 @@ export default {
     }, { flush: 'post' });
 
     // --- 生命周期钩子 ---
-    
+
     // 窗口大小变化处理函数
     const handleResize = () => {
       checkScrollbar();
     };
-    
+
     onMounted(() => {
       // 组件挂载后，加载初始数据
       loadSearchHistory();
@@ -946,40 +1127,61 @@ export default {
       checkEverythingStatus();
       // 定期检查Everything连接状态
       setInterval(checkEverythingStatus, 30000); // 每30秒检查一次
-      
+
       // 监听窗口大小变化，重新检测滚动条
       window.addEventListener('resize', handleResize);
-      
+
       // 设置横向滚动同步
       setupScrollSync();
-      
+
       // 监听来自主进程的消息
       if (window.electronAPI?.on) {
+        console.log('设置事件监听器...');
+
         window.electronAPI.on('open-settings', () => {
           showConfigDialog.value = true;
         });
-        
+
         // 监听AI调试流式输出
         window.electronAPI.on('ai-debug-stream', (data) => {
           if (debugConfig.value.enableStreamDebug) {
             addDebugMessage(data.type || 'stream', data.content || '');
           }
         });
-        
+
         // 监听AI调试结果
         window.electronAPI.on('ai-debug-result', (data) => {
           if (debugConfig.value.enableStreamDebug) {
             addDebugMessage('result', data.result || '');
           }
         });
-        
+
         // 监听AI调试错误
         window.electronAPI.on('ai-debug-error', (data) => {
           if (debugConfig.value.enableStreamDebug) {
             addDebugMessage('error', data.error || '');
           }
         });
+
+        // 监听自动更新通知
+        console.log('设置 update-available 事件监听器...');
+        window.electronAPI.on('update-available', (data) => {
+          console.log('收到更新通知:', data);
+          // 检查是否应该显示此版本的更新通知
+          const shouldShow = shouldShowUpdateNotification(data.latestVersion);
+          console.log('是否应该显示更新通知:', shouldShow);
+          if (shouldShow) {
+            console.log('显示更新通知');
+            handleUpdateNotification(data);
+          } else {
+            console.log('已忽略此版本更新通知');
+          }
+        });
+        console.log('update-available 事件监听器设置完成');
       }
+
+      // 加载当前版本号
+      loadCurrentVersion();
     });
 
     // 组件卸载时清理事件监听器
@@ -1000,8 +1202,10 @@ export default {
       columnWidths, isDragging, dragColumn,
       // 滚动条补偿相关数据
       hasScrollbar, fileListBody, fileListHeader,
-             // 计算属性
-       filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
+      // 自动更新相关数据
+      updateInfo, showUpdateNotification, currentVersion,
+      // 计算属性
+      filteredHistory, sortedResults, everythingStatusClass, everythingStatusText, getHeaderStyle,
       // 方法
       performSearch, selectHistoryItem, navigateHistory, hideHistoryDelayed, sortBy, getSortClass,
       openFile, showFileContextMenu, exportResults, clearResults, trySuggestion,
@@ -1012,6 +1216,8 @@ export default {
       startColumnResize, getColumnStyle,
       // 滚动条检测方法
       checkScrollbar,
+      // 自动更新相关方法
+      handleUpdateNotification, closeUpdateNotification, downloadUpdate, remindLater, ignoreVersion,
       // 新增和外部方法
       clearError, formatFileSize, formatDate, getFileIcon, getDisplayFileName
     };

@@ -46,11 +46,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 显示文件右键菜单
   showFileContextMenu: (filePath) => ipcRenderer.invoke('show-file-context-menu', filePath),
   
+  // 自动更新相关API
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  getCurrentVersion: () => ipcRenderer.invoke('get-current-version'),
+  openDownloadPage: (downloadUrl) => ipcRenderer.invoke('open-download-page', downloadUrl),
+  
   // 监听来自主进程的消息
   on: (channel, func) => {
-    const validChannels = ['open-settings', 'ai-debug-stream', 'ai-debug-result', 'ai-debug-error'];
+    const validChannels = ['open-settings', 'ai-debug-stream', 'ai-debug-result', 'ai-debug-error', 'update-available'];
     if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, func);
+      ipcRenderer.on(channel, (event, ...args) => {
+        console.log(`preload.js: 收到 ${channel} 事件，数据:`, ...args);
+        func(...args);
+      });
     }
   },
   
