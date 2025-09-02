@@ -2,6 +2,7 @@ import { createI18n } from 'vue-i18n'
 
 // 导入语言包
 import zhCN from './locales/zh-CN.js'
+import zhTW from './locales/zh-TW.js'
 import enUS from './locales/en-US.js' 
 import esES from './locales/es-ES.js'
 import bnBD from './locales/bn-BD.js'
@@ -15,7 +16,7 @@ import deDE from './locales/de-DE.js'
 // 获取系统默认语言，如果不支持则使用中文
 function getDefaultLocale() {
   const systemLocale = navigator.language || navigator.userLanguage
-  const supportedLocales = ['zh-CN', 'en-US', 'es-ES', 'bn-BD', 'hi-IN', 'ar-SA', 'pt-PT', 'ru-RU', 'ja-JP', 'de-DE']
+  const supportedLocales = ['zh-CN', 'zh-TW', 'en-US', 'es-ES', 'bn-BD', 'hi-IN', 'ar-SA', 'pt-PT', 'ru-RU', 'ja-JP', 'de-DE']
   
   // 精确匹配
   if (supportedLocales.includes(systemLocale)) {
@@ -51,6 +52,7 @@ const i18n = createI18n({
   globalInjection: true, // 全局注入$t函数
   messages: {
     'zh-CN': zhCN,
+    'zh-TW': zhTW,
     'en-US': enUS,
     'es-ES': esES,
     'bn-BD': bnBD,
@@ -89,6 +91,7 @@ export function getCurrentLocale() {
 export function getSupportedLocales() {
   return [
     { code: 'zh-CN', name: '简体中文', nativeName: '简体中文' },
+    { code: 'zh-TW', name: '繁體中文', nativeName: '繁體中文' },
     { code: 'en-US', name: 'English', nativeName: 'English' },
     { code: 'es-ES', name: 'Spanish', nativeName: 'Español' },
     { code: 'bn-BD', name: 'Bengali', nativeName: 'বাংলা' },
