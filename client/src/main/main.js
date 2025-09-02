@@ -298,13 +298,13 @@ class AutoUpdater {
       console.log('开始启动时更新检查...');
       const allWindows = BrowserWindow.getAllWindows();
       console.log('当前窗口数量:', allWindows.length);
-      
+
       if (allWindows.length === 0) {
         console.log('没有可用的窗口，延迟2秒后重试...');
         setTimeout(() => this.checkOnStartup(), 2000);
         return;
       }
-      
+
       // 确保窗口内容已经加载完成
       const mainWindow = allWindows[0];
       if (!mainWindow.webContents.isLoading()) {
@@ -1003,8 +1003,9 @@ ${query}
           console.error('原始响应:', responseContent);
 
           if (enableStreamDebug) {
-            event.sender.send('ai-debug-error', {
-              error: `JSON解析失败: ${parseError.message}`
+            event.sender.send('ai-debug-stream', {
+              type: 'info',
+              content: `JSON解析失败: ${parseError.message}`
             });
           }
 
