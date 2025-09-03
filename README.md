@@ -301,7 +301,7 @@ photoshop                       # 查找包含"photoshop"的文件
 本项目采用现代化的 Electron + Vue 3 架构，具有清晰的前后端分离设计：
 
 ```
-everything-ai-chat/
+client/
 ├── src/
 │   ├── main/                    # Electron主进程
 │   │   ├── main.js             # 主进程入口，处理窗口管理和IPC
