@@ -144,6 +144,18 @@
               {{ $t('settings.openai.model.help') }}
             </small>
           </div>
+
+          <!-- OpenAI API 测试 -->
+          <div class="form-group">
+            <div class="test-section">
+              <button @click="testOpenAI" :disabled="isTestingOpenAI" class="test-button">
+                {{ isTestingOpenAI ? $t('settings.openai.testing') : $t('settings.openai.test') }}
+              </button>
+              <div v-if="openaiTestMessage" class="test-message" :class="{ success: openaiTestSuccess, error: !openaiTestSuccess }">
+                {{ openaiTestMessage }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- AI 调试配置 -->
@@ -522,6 +534,11 @@ export default {
     const isTesting = ref(false);
     const testMessage = ref('');
     const testSuccess = ref(false);
+
+    // OpenAI 测试相关状态
+    const isTestingOpenAI = ref(false);
+    const openaiTestMessage = ref('');
+    const openaiTestSuccess = ref(false);
     
     // 自动保存相关状态
     const hasUnsavedChanges = ref(false);
@@ -688,6 +705,34 @@ Everything搜索语法规则：
         testSuccess.value = false;
       } finally {
         isTesting.value = false;
+      }
+    };
+
+    // 测试OpenAI连接
+    const testOpenAI = async () => {
+      isTestingOpenAI.value = true;
+      openaiTestMessage.value = '';
+
+      try {
+        // 对于本地部署，不强制要求API Key
+        const result = await window.electronAPI.testOpenAIConnection({
+          apiKey: config.apiKey,
+          baseURL: config.baseURL,
+          model: config.model
+        });
+
+        if (result.success) {
+          openaiTestMessage.value = t('settings.openai.testSuccess', { model: result.model });
+          openaiTestSuccess.value = true;
+        } else {
+          openaiTestMessage.value = t('settings.openai.testFailed', { error: result.error });
+          openaiTestSuccess.value = false;
+        }
+      } catch (error) {
+        openaiTestMessage.value = t('settings.openai.testFailed', { error: error.message });
+        openaiTestSuccess.value = false;
+      } finally {
+        isTestingOpenAI.value = false;
       }
     };
 
@@ -965,6 +1010,11 @@ Everything搜索语法规则：
       testSuccess,
       showModelHistory,
       filteredModelHistory,
+
+      // OpenAI 测试相关
+      isTestingOpenAI,
+      openaiTestMessage,
+      openaiTestSuccess,
       
       // 一键连接相关
       isAutoConnecting,
@@ -997,6 +1047,7 @@ Everything搜索语法规则：
       // 方法
       saveConfig,
       testEverything,
+      testOpenAI,
       filterModelHistory,
       selectModel,
       hideModelHistoryDelayed,

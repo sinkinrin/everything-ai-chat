@@ -125,7 +125,12 @@ export default {
         label: '模型',
         placeholder: '输入或选择模型',
         help: '输入自定义模型名称或从历史记录中选择'
-      }
+      },
+      // 测试相关文本
+      test: '测试连接',
+      testing: '测试中...',
+      testSuccess: 'API连接成功！使用模型: {model}',
+      testFailed: 'API连接失败: {error}'
     },
     
     // 调试配置

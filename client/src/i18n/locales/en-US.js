@@ -125,7 +125,12 @@ export default {
         label: 'Model',
         placeholder: 'Enter or select model',
         help: 'Enter custom model name or select from history'
-      }
+      },
+      // Test related text
+      test: 'Test Connection',
+      testing: 'Testing...',
+      testSuccess: 'API connection successful! Using model: {model}',
+      testFailed: 'API connection failed: {error}'
     },
     
     // Debug configuration
