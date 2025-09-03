@@ -83,6 +83,7 @@ https://100.agitao.net/
 ```bash
 git clone https://github.com/your-repo/everything-ai-chat.git
 cd everything-ai-chat
+cd client
 ```
 
 ### 3. 安装依赖
