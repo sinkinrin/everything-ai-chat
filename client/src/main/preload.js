@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 获取OpenAI配置
   getOpenAIConfig: () => ipcRenderer.invoke('get-openai-config'),
+
+  // 测试OpenAI连接
+  testOpenAIConnection: (config) => ipcRenderer.invoke('test-openai-connection', config),
   
   // 打开文件路径
   openPath: (filePath) => ipcRenderer.invoke('open-path', filePath),

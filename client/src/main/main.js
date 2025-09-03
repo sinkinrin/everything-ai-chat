@@ -1413,6 +1413,56 @@ ipcMain.handle('get-openai-config', async () => {
   return store.get('openai', {});
 });
 
+// 测试OpenAI连接
+ipcMain.handle('test-openai-connection', async (event, config) => {
+  try {
+    // 参数验证
+    if (!config || typeof config !== 'object') {
+      return { success: false, error: '无效的配置参数' };
+    }
+
+    // 使用传入的配置创建临时OpenAI实例进行测试
+    // 对于本地部署，API Key可以为空或任意值
+    const testOpenAI = new OpenAI({
+      apiKey: config.apiKey || 'local-api-key', // 本地部署时使用默认值
+      baseURL: config.baseURL || 'https://api.openai.com/v1',
+      timeout: 30000 // 30秒超时
+    });
+
+    // 发送一个简单的测试请求
+    const response = await testOpenAI.chat.completions.create({
+      model: config.model || 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: 'test' }],
+      max_tokens: 1
+    });
+
+    return {
+      success: true,
+      message: '连接成功',
+      model: response.model
+    };
+  } catch (error) {
+    // 过滤敏感错误信息
+    let errorMessage = error.message;
+    if (error.status === 401) {
+      errorMessage = 'API Key无效或已过期';
+    } else if (error.status === 429) {
+      errorMessage = 'API调用频率超限，请稍后重试';
+    } else if (error.status === 500) {
+      errorMessage = 'OpenAI服务暂时不可用';
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      errorMessage = '网络连接失败，请检查网络设置';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = '请求超时，请检查网络连接';
+    }
+
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+});
+
 // 打开文件
 ipcMain.handle('open-path', async (event, filePath) => {
   try {

@@ -125,7 +125,12 @@ export default {
         label: 'モデル',
         placeholder: 'モデルを入力または選択',
         help: 'カスタムモデル名を入力するか、履歴から選択'
-      }
+      },
+      // テスト関連テキスト
+      test: '接続テスト',
+      testing: 'テスト中...',
+      testSuccess: 'API接続成功！使用モデル: {model}',
+      testFailed: 'API接続失敗: {error}'
     },
     
     // システムプロンプト設定

@@ -125,7 +125,12 @@ export default {
         label: 'Modell',
         placeholder: 'Modell eingeben oder auswählen',
         help: 'Benutzerdefinierten Modellnamen eingeben oder aus Verlauf auswählen'
-      }
+      },
+      // Test-bezogener Text
+      test: 'Verbindung testen',
+      testing: 'Teste...',
+      testSuccess: 'API-Verbindung erfolgreich! Verwendetes Modell: {model}',
+      testFailed: 'API-Verbindung fehlgeschlagen: {error}'
     },
     
     // System-Prompt-Konfiguration

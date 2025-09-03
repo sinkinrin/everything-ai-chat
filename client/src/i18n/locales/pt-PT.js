@@ -125,7 +125,12 @@ export default {
         label: 'Modelo',
         placeholder: 'Digite ou selecione modelo',
         help: 'Digite nome do modelo personalizado ou selecione do histórico'
-      }
+      },
+      // Texto relacionado com testes
+      test: 'Testar Ligação',
+      testing: 'A testar...',
+      testSuccess: 'Ligação API bem-sucedida! Modelo usado: {model}',
+      testFailed: 'Ligação API falhou: {error}'
     },
     
     // Configuração do prompt do sistema

@@ -125,7 +125,12 @@ export default {
         label: 'Modelo',
         placeholder: 'Ingrese o seleccione modelo',
         help: 'Ingrese nombre de modelo personalizado o seleccione del historial'
-      }
+      },
+      // Texto relacionado con pruebas
+      test: 'Probar Conexión',
+      testing: 'Probando...',
+      testSuccess: '¡Conexión API exitosa! Usando modelo: {model}',
+      testFailed: 'Conexión API falló: {error}'
     },
     
     // Configuración del prompt del sistema
